@@ -1,0 +1,703 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 19,
+  "summary": "Building 'Aerotek (IU) Employee Management' — a comprehensive HR platform with hiring, staff management, scheduling, time off, and PTO policy features. Login-only access (no sign-up). Roles for HR personnel, managers, supervisors, and employees. HR Admin can set user roles (Manager, Supervisor, Employee). Managers and HR Admins can create employees with login credentials. Supervisors can view schedules and approve time off but cannot hire, add, or terminate employees. Pre-configured admin logins: richaadi0 / 3vtpxdgf and Adirich / 3vtpxdgf.",
+  "architectural_notes": [
+    "Login-only platform — no public sign-up; accounts created by HR admin only",
+    "Project name: Aerotek (IU) Employee Management",
+    "Managers (in addition to HR Admins) can create login accounts for employees",
+    "Four roles: HR Admin, Manager, Supervisor, Employee — only HR Admin can assign/change user roles",
+    "Supervisors: can view all schedules and approve time off, but cannot hire, add, or terminate employees",
+    "Staff ID badge login: scanned badge ID number must match employee profile ID field to authenticate and redirect to employee dashboard",
+    "Shifts support overnight hours — end time can be before start time (e.g., 22:00–06:30 spans midnight)",
+    "Employee records require a direct manager assignment (enforced by HR Admin); manager's own manager field shows 'Human Resources'",
+    "Timesheet workflow: Employee submits → Manager approves/denies → HR Admin gives final approval/denial (two-stage)"
+  ],
+  "known_issues": [
+    "Login system has errors preventing account creation and authentication — requires fix",
+    "Pre-seeded admin accounts (richaadi0, Adirich) are denied login access — auth validation not recognizing seeded credentials"
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-build-a-login-only-frontend-entry-point-show-a-branded-login-screen-with-the-aerotek-iu-employee-management-logo-name-username-and-password-fields-and-a-login-button-no-sign-up-link-or-registration-form-redirect-unauthenticated-users-to-the-login-page-after-login-route-users-to-a-role-appropriate-dashboard",
+      "title": "Build a login-only frontend entry point. Show a branded login screen with the 'Aerotek (IU) Employee Management' logo/name, username and password fields, and a login button. No sign-up link or registration form. Redirect unauthenticated users to the login page. After login, route users to a role-appropriate dashboard.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-hr-admin-dashboard-with-sidebar-navigation-covering-dashboard-kpi-summary-employees-hiring-recruitment-scheduling-time-off-requests-pto-policies-and-account-management-create-manage-login-accounts-each-section-should-be-a-distinct-view-within-the-app",
+      "title": "Build the HR Admin dashboard with sidebar navigation covering: Dashboard (KPI summary), Employees, Hiring & Recruitment, Scheduling, Time Off Requests, PTO Policies, and Account Management (create/manage login accounts). Each section should be a distinct view within the app.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-staff-management-ui-an-employee-directory-with-search-filter-by-department-status-and-employee-cards-rows-clicking-an-employee-opens-a-detail-view-with-all-profile-fields-their-manager-assigned-pto-policy-current-pto-balance-and-employment-history-notes-hr-admin-can-edit-all-fields-managers-can-view-their-direct-reports",
+      "title": "Build the staff management UI: an employee directory with search, filter by department/status, and employee cards/rows. Clicking an employee opens a detail view with all profile fields, their manager, assigned PTO policy, current PTO balance, and employment history notes. HR Admin can edit all fields; Managers can view their direct reports.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-hiring-and-recruitment-ui-a-job-postings-board-with-status-columns-draft-open-closed-an-applicant-pipeline-view-kanban-style-stages-per-posting-ability-to-add-applicants-and-move-them-through-stages-and-an-onboarding-checklist-view-for-hired-applicants",
+      "title": "Build the hiring and recruitment UI: a job postings board with status columns (Draft, Open, Closed), an applicant pipeline view (Kanban-style stages) per posting, ability to add applicants and move them through stages, and an onboarding checklist view for hired applicants.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-scheduling-ui-a-weekly-calendar-view-showing-employee-shifts-per-day-filterable-by-department-hr-admin-and-managers-can-add-edit-and-delete-shifts-employees-see-only-their-own-schedule-show-conflict-warnings-inline-when-overlapping-shifts-are-detected",
+      "title": "Build the scheduling UI: a weekly calendar view showing employee shifts per day, filterable by department. HR Admin and Managers can add, edit, and delete shifts. Employees see only their own schedule. Show conflict warnings inline when overlapping shifts are detected.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-time-off-management-ui-employees-see-a-request-form-and-their-own-request-history-with-statuses-managers-and-hr-admins-see-a-list-of-all-pending-requests-for-their-team-with-approve-deny-actions-and-a-comment-field-show-a-calendar-overlay-of-approved-absences",
+      "title": "Build the time-off management UI: employees see a request form and their own request history with statuses. Managers and HR Admins see a list of all pending requests for their team, with approve/deny actions and a comment field. Show a calendar overlay of approved absences.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-pto-policy-management-ui-hr-admin-only-a-list-of-defined-policies-with-accrual-details-a-form-to-create-edit-policies-a-view-to-assign-policies-to-employees-or-departments-and-a-per-employee-pto-balance-ledger-with-manual-adjustment-capability",
+      "title": "Build the PTO policy management UI (HR Admin only): a list of defined policies with accrual details, a form to create/edit policies, a view to assign policies to employees or departments, and a per-employee PTO balance ledger with manual adjustment capability.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-manager-dashboard-shows-their-team-s-headcount-upcoming-shifts-for-the-week-pending-time-off-requests-requiring-approval-and-quick-links-to-schedule-and-team-directory-views-manager-cannot-access-pto-policy-configuration-or-hiring-features",
+      "title": "Build the Manager dashboard: shows their team's headcount, upcoming shifts for the week, pending time-off requests requiring approval, and quick links to schedule and team directory views. Manager cannot access PTO policy configuration or hiring features.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-employee-self-service-dashboard-shows-the-employee-s-own-profile-summary-current-pto-balance-upcoming-shifts-and-a-history-of-their-time-off-requests-employee-can-submit-new-time-off-requests-from-this-view",
+      "title": "Build the Employee self-service dashboard: shows the employee's own profile summary, current PTO balance, upcoming shifts, and a history of their time-off requests. Employee can submit new time-off requests from this view.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-professional-corporate-hr-platform-visual-theme-throughout-the-application-clean-dark-navy-and-slate-color-palette-with-amber-gold-accents-sharp-card-based-layouts-crisp-sans-serif-typography-and-consistent-use-of-status-badges-data-tables-and-modal-dialogs-brand-the-app-consistently-as-aerotek-iu-employee-management",
+      "title": "Apply a professional, corporate HR platform visual theme throughout the application: clean dark navy and slate color palette with amber/gold accents, sharp card-based layouts, crisp sans-serif typography, and consistent use of status badges, data tables, and modal dialogs. Brand the app consistently as 'Aerotek (IU) Employee Management'.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-frontend-loginpage-tsx-so-that-it-correctly-calls-the-backend-login-endpoint-handles-both-success-and-error-responses-without-crashing-stores-the-authenticated-session-role-username-display-name-in-sessionstorage-via-the-authcontext-and-redirects-to-the-correct-role-based-dashboard-display-a-user-friendly-inline-error-message-when-credentials-are-invalid-instead-of-throwing-an-unhandled-exception",
+      "title": "Fix the frontend LoginPage.tsx so that it correctly calls the backend login endpoint, handles both success and error responses without crashing, stores the authenticated session (role, username, display name) in sessionStorage via the AuthContext, and redirects to the correct role-based dashboard. Display a user-friendly inline error message when credentials are invalid instead of throwing an unhandled exception.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-account-management-page-accountmanagementpage-tsx-so-that-creating-a-new-login-account-via-the-modal-form-reliably-calls-the-correct-backend-mutation-handles-the-response-and-reflects-the-new-account-in-the-accounts-list-without-errors-ensure-form-validation-prevents-submission-of-empty-username-or-password-fields-and-shows-appropriate-error-feedback",
+      "title": "Fix the Account Management page (AccountManagementPage.tsx) so that creating a new login account via the modal form reliably calls the correct backend mutation, handles the response, and reflects the new account in the accounts list without errors. Ensure form validation prevents submission of empty username or password fields and shows appropriate error feedback.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-useauth-ts-hook-and-authcontext-tsx-to-ensure-that-the-actor-is-fully-initialized-before-the-login-call-is-made-and-that-null-undefined-actor-states-are-guarded-against-ensure-the-login-mutation-in-usequeries-ts-correctly-maps-backend-response-variants-ok-err-to-resolved-rejected-promise-states-so-react-query-error-handling-works-as-expected",
+      "title": "Fix the useAuth.ts hook and AuthContext.tsx to ensure that the actor is fully initialized before the login call is made, and that null/undefined actor states are guarded against. Ensure the login mutation in useQueries.ts correctly maps backend response variants (ok/err) to resolved/rejected promise states so React Query error handling works as expected.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-frontend-login-flow-loginpage-tsx-useauth-ts-authcontext-tsx-usequeries-ts-to-correctly-handle-the-backend-s-successful-login-response-for-the-pre-seeded-admin-accounts-ensure-that-when-the-backend-returns-a-success-variant-for-richaadi0-or-adirich-the-session-is-stored-in-sessionstorage-and-the-user-is-redirected-to-the-hr-admin-dashboard-without-displaying-access-denied-or-any-unhandled-error",
+      "title": "Fix the frontend login flow (LoginPage.tsx, useAuth.ts, AuthContext.tsx, useQueries.ts) to correctly handle the backend's successful login response for the pre-seeded admin accounts. Ensure that when the backend returns a success variant for 'richaadi0' or 'Adirich', the session is stored in sessionStorage and the user is redirected to the HR Admin dashboard without displaying 'access denied' or any unhandled error.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-hradminlayout-tsx-convert-the-always-visible-sidebar-navigation-into-a-collapsible-drawer-toggled-by-a-hamburger-three-line-menu-button-the-sidebar-should-be-hidden-by-default-on-all-screen-sizes-and-slide-in-or-appear-when-the-hamburger-icon-is-clicked-the-sidebar-content-area-must-be-scrollable-overflow-y-auto-so-that-all-navigation-links-and-the-logout-button-are-reachable-by-scrolling-when-the-list-is-long-an-overlay-or-close-button-must-allow-the-user-to-dismiss-the-sidebar-the-hamburger-toggle-button-must-remain-visible-at-all-times-in-the-top-bar",
+      "title": "In HRAdminLayout.tsx, convert the always-visible sidebar navigation into a collapsible drawer toggled by a hamburger (three-line) menu button. The sidebar should be hidden by default on all screen sizes and slide in or appear when the hamburger icon is clicked. The sidebar content area must be scrollable (overflow-y: auto) so that all navigation links and the logout button are reachable by scrolling when the list is long. An overlay or close button must allow the user to dismiss the sidebar. The hamburger toggle button must remain visible at all times in the top bar.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-managerlayout-tsx-apply-the-same-collapsible-hamburger-sidebar-pattern-hide-the-sidebar-navigation-behind-a-three-line-menu-toggle-button-in-the-top-bar-make-the-sidebar-panel-scrollable-so-the-logout-button-is-reachable-via-scroll-and-support-dismissal-via-overlay-click-or-a-close-button",
+      "title": "In ManagerLayout.tsx, apply the same collapsible hamburger sidebar pattern: hide the sidebar navigation behind a three-line menu toggle button in the top bar, make the sidebar panel scrollable so the logout button is reachable via scroll, and support dismissal via overlay click or a close button.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-employeelayout-tsx-apply-the-same-collapsible-hamburger-sidebar-pattern-hide-the-sidebar-navigation-behind-a-three-line-menu-toggle-button-in-the-top-bar-make-the-sidebar-panel-scrollable-so-the-logout-button-is-reachable-via-scroll-and-support-dismissal-via-overlay-click-or-a-close-button",
+      "title": "In EmployeeLayout.tsx, apply the same collapsible hamburger sidebar pattern: hide the sidebar navigation behind a three-line menu toggle button in the top bar, make the sidebar panel scrollable so the logout button is reachable via scroll, and support dismissal via overlay click or a close button.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-account-management-section-to-the-manager-dashboard-sidebar-and-routing-managers-should-be-able-to-navigate-to-a-dedicated-account-management-page-reusing-or-mirroring-the-hr-admin-accountmanagementpage-where-they-can-view-existing-accounts-and-create-new-login-accounts-for-employee-or-manager-roles-only-not-hr-admin-the-page-must-call-the-same-backend-createaccount-endpoint-and-display-the-result-list",
+      "title": "Add an Account Management section to the Manager dashboard sidebar and routing. Managers should be able to navigate to a dedicated 'Account Management' page (reusing or mirroring the HR Admin AccountManagementPage) where they can view existing accounts and create new login accounts (for Employee or Manager roles only — not HR Admin). The page must call the same backend `createAccount` endpoint and display the result list.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-all-frontend-runtime-errors-across-the-entire-application-1-fix-any-unhandled-promise-rejections-or-uncaught-exceptions-in-loginpage-tsx-accountmanagementpage-tsx-useauth-ts-authcontext-tsx-and-usequeries-ts-2-ensure-all-react-query-mutations-correctly-map-backend-ok-err-motoko-variants-to-resolved-rejected-promise-states-3-remove-any-direct-property-accesses-on-potentially-null-undefined-actor-or-response-objects-add-proper-null-guards-4-fix-any-broken-route-definitions-or-missing-page-components-that-cause-blank-screens-or-console-errors-5-ensure-the-actor-is-fully-initialized-before-any-backend-call-is-attempted",
+      "title": "Audit and fix all frontend runtime errors across the entire application: (1) Fix any unhandled promise rejections or uncaught exceptions in LoginPage.tsx, AccountManagementPage.tsx, useAuth.ts, AuthContext.tsx, and useQueries.ts. (2) Ensure all React Query mutations correctly map backend `#ok`/`#err` Motoko variants to resolved/rejected Promise states. (3) Remove any direct property accesses on potentially null/undefined actor or response objects — add proper null guards. (4) Fix any broken route definitions or missing page components that cause blank screens or console errors. (5) Ensure the actor is fully initialized before any backend call is attempted.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-the-application-data-and-ui-feel-realistic-and-production-quality-1-seed-the-backend-with-realistic-sample-data-at-least-8-employees-across-3-departments-e-g-engineering-operations-hr-2-open-job-postings-with-applicants-in-pipeline-stages-3-pto-policies-sample-shifts-for-the-current-week-and-2-3-pending-time-off-requests-2-ensure-all-dashboard-kpi-cards-show-non-zero-meaningful-numbers-derived-from-real-seeded-data-3-replace-any-placeholder-text-n-a-undefined-null-lorem-ipsum-with-realistic-field-values-4-ensure-status-badges-date-fields-and-employee-profile-fields-display-correctly-formatted-real-looking-data-throughout-all-pages",
+      "title": "Make the application data and UI feel realistic and production-quality: (1) Seed the backend with realistic sample data — at least 8 employees across 3 departments (e.g., Engineering, Operations, HR), 2 open job postings with applicants in pipeline stages, 3 PTO policies, sample shifts for the current week, and 2–3 pending time-off requests. (2) Ensure all dashboard KPI cards show non-zero, meaningful numbers derived from real seeded data. (3) Replace any placeholder text ('N/A', 'undefined', 'null', 'Lorem ipsum') with realistic field values. (4) Ensure status badges, date fields, and employee profile fields display correctly formatted, real-looking data throughout all pages.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-polish-the-overall-ui-for-production-realism-1-ensure-all-pages-have-consistent-page-titles-and-breadcrumb-or-section-headers-2-all-data-tables-must-show-a-proper-empty-state-illustration-message-when-no-records-exist-3-loading-states-must-use-skeleton-loaders-or-spinners-consistently-across-all-pages-4-all-modals-must-have-proper-close-x-buttons-backdrop-dismiss-and-clear-submit-cancel-actions-5-all-forms-must-show-inline-validation-errors-on-blur-submit-6-toast-notifications-must-appear-on-all-successful-create-update-delete-and-approval-denial-actions-7-the-sidebar-active-link-must-be-visually-highlighted-to-indicate-the-current-page",
+      "title": "Polish the overall UI for production realism: (1) Ensure all pages have consistent page titles and breadcrumb or section headers. (2) All data tables must show a proper empty state illustration/message when no records exist. (3) Loading states must use skeleton loaders or spinners consistently across all pages. (4) All modals must have proper close (X) buttons, backdrop dismiss, and clear submit/cancel actions. (5) All forms must show inline validation errors on blur/submit. (6) Toast notifications must appear on all successful create/update/delete and approval/denial actions. (7) The sidebar active link must be visually highlighted to indicate the current page.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-supervisor-layout-and-dashboard-create-supervisorlayout-tsx-with-the-same-collapsible-hamburger-sidebar-pattern-used-in-hradminlayout-tsx-managerlayout-tsx-and-employeelayout-tsx-the-sidebar-must-include-navigation-links-for-dashboard-schedules-view-only-all-departments-and-time-off-requests-approve-deny-only-the-logout-button-must-be-reachable-by-scrolling-register-supervisor-routes-in-app-tsx-under-a-supervisor-base-path-with-role-guard-redirects",
+      "title": "Build a Supervisor layout and dashboard. Create SupervisorLayout.tsx with the same collapsible hamburger sidebar pattern used in HRAdminLayout.tsx, ManagerLayout.tsx, and EmployeeLayout.tsx. The sidebar must include navigation links for: Dashboard, Schedules (view-only, all departments), and Time Off Requests (approve/deny only). The logout button must be reachable by scrolling. Register supervisor routes in App.tsx under a /supervisor base path with role-guard redirects.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-supervisor-dashboard-page-supervisordashboard-tsx-show-kpi-cards-for-total-employees-visible-to-the-supervisor-shifts-scheduled-this-week-and-pending-time-off-requests-awaiting-approval-include-quick-links-to-the-schedules-view-and-time-off-requests-view-match-the-existing-dark-navy-amber-visual-theme",
+      "title": "Build the Supervisor Dashboard page (SupervisorDashboard.tsx). Show KPI cards for: total employees visible to the supervisor, shifts scheduled this week, and pending time-off requests awaiting approval. Include quick-links to the Schedules view and Time Off Requests view. Match the existing dark navy / amber visual theme.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-supervisor-schedules-page-supervisorschedulepage-tsx-a-read-only-weekly-calendar-view-showing-all-employee-shifts-across-all-departments-the-supervisor-cannot-add-edit-or-delete-shifts-reuse-the-existing-weekly-calendar-grid-pattern-from-managerschedulingpage-tsx-but-remove-all-mutation-controls-no-add-shift-button-no-delete-icons",
+      "title": "Build a Supervisor Schedules page (SupervisorSchedulePage.tsx) — a read-only weekly calendar view showing all employee shifts across all departments. The supervisor cannot add, edit, or delete shifts. Reuse the existing weekly calendar grid pattern from ManagerSchedulingPage.tsx but remove all mutation controls (no 'Add Shift' button, no delete icons).",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-supervisor-time-off-requests-page-supervisortimeoffpage-tsx-shows-all-pending-time-off-requests-with-approve-deny-actions-and-a-comment-field-processed-requests-are-shown-in-a-separate-section-reuse-the-same-pattern-from-managertimeoffpage-tsx-the-supervisor-cannot-create-or-delete-time-off-requests",
+      "title": "Build a Supervisor Time Off Requests page (SupervisorTimeOffPage.tsx) — shows all pending time-off requests with approve/deny actions and a comment field. Processed requests are shown in a separate section. Reuse the same pattern from ManagerTimeOffPage.tsx. The supervisor cannot create or delete time-off requests.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-employee-creation-form-in-addemployeepage-tsx-hr-admin-to-include-username-and-password-fields-on-form-submission-call-the-updated-createemployeewithaccount-or-equivalent-backend-endpoint-that-creates-both-the-employee-profile-and-login-account-atomically-show-inline-validation-errors-if-username-or-password-fields-are-empty-display-a-success-toast-and-navigate-back-to-the-employees-list-on-completion",
+      "title": "Update the employee creation form in AddEmployeePage.tsx (HR Admin) to include Username and Password fields. On form submission, call the updated createEmployeeWithAccount (or equivalent) backend endpoint that creates both the employee profile and login account atomically. Show inline validation errors if username or password fields are empty. Display a success toast and navigate back to the employees list on completion.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-hr-admin-account-management-page-accountmanagementpage-tsx-role-selector-to-include-supervisor-as-an-option-alongside-manager-and-employee-hr-admin-can-assign-any-role-including-supervisor-the-manager-account-management-page-manageraccountmanagementpage-tsx-must-not-include-supervisor-or-hr-admin-in-its-role-selector-only-employee-and-manager-are-selectable-by-a-manager",
+      "title": "Update the HR Admin Account Management page (AccountManagementPage.tsx) role selector to include 'Supervisor' as an option alongside Manager and Employee. HR Admin can assign any role including Supervisor. The Manager Account Management page (ManagerAccountManagementPage.tsx) must NOT include Supervisor or HR Admin in its role selector — only Employee and Manager are selectable by a Manager.",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-login-flow-and-authcontext-to-handle-the-new-supervisor-role-after-a-successful-login-if-the-returned-role-is-supervisor-store-the-session-with-role-supervisor-and-redirect-to-supervisor-dashboard-add-a-issupervisor-boolean-flag-to-the-authcontext-similar-to-ishradmin-ismanager-and-isemployee",
+      "title": "Update the login flow and AuthContext to handle the new Supervisor role. After a successful login, if the returned role is 'supervisor', store the session with role='supervisor' and redirect to /supervisor/dashboard. Add a isSupervisor boolean flag to the AuthContext similar to isHrAdmin, isManager, and isEmployee.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-hooks-usequeries-ts-add-a-usedeleteemployee-mutation-hook-that-calls-the-backend-deleteemployee-endpoint-on-success-invalidate-the-employees-query-cache-so-the-list-refreshes-automatically-on-error-surface-the-error-message-for-display",
+      "title": "In `frontend/src/hooks/useQueries.ts`, add a `useDeleteEmployee` mutation hook that calls the backend `deleteEmployee` endpoint. On success, invalidate the employees query cache so the list refreshes automatically. On error, surface the error message for display.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-hr-employeespage-tsx-add-a-delete-employee-action-button-visible-to-hr-admin-only-in-each-employee-row-clicking-it-opens-a-confirmation-modal-asking-the-user-to-confirm-permanent-deletion-on-confirmation-call-the-usedeleteemployee-mutation-show-a-success-toast-on-completion-and-show-an-inline-error-toast-if-the-deletion-fails-the-employee-must-disappear-from-the-list-immediately-after-successful-deletion",
+      "title": "In `frontend/src/pages/hr/EmployeesPage.tsx`, add a 'Delete Employee' action button (visible to HR Admin only) in each employee row. Clicking it opens a confirmation modal asking the user to confirm permanent deletion. On confirmation, call the `useDeleteEmployee` mutation, show a success toast on completion, and show an inline error toast if the deletion fails. The employee must disappear from the list immediately after successful deletion.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-hr-employeedetailpage-tsx-add-a-delete-employee-button-hr-admin-only-in-the-employee-detail-view-clicking-it-opens-a-confirmation-modal-on-confirmation-call-usedeleteemployee-show-a-success-toast-and-navigate-back-to-the-employees-list-at-hr-employees",
+      "title": "In `frontend/src/pages/hr/EmployeeDetailPage.tsx`, add a 'Delete Employee' button (HR Admin only) in the employee detail view. Clicking it opens a confirmation modal. On confirmation, call `useDeleteEmployee`, show a success toast, and navigate back to the employees list at `/hr/employees`.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-hooks-usequeries-ts-add-a-useloginwithbadgeid-mutation-hook-that-calls-the-backend-loginwithbadgeid-endpoint-maps-the-response-variant-to-resolved-rejected-promise-states-same-pattern-as-the-existing-login-mutation-and-returns-the-session-data-on-success",
+      "title": "In `frontend/src/hooks/useQueries.ts`, add a `useLoginWithBadgeId` mutation hook that calls the backend `loginWithBadgeId` endpoint, maps the response variant to resolved/rejected Promise states (same pattern as the existing login mutation), and returns the session data on success.",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-loginpage-tsx-add-a-login-with-staff-id-badge-link-below-the-existing-login-button-clicking-this-link-opens-a-modal-overlay-containing-an-id-scanner-ui-the-scanner-must-use-the-browser-s-camera-via-the-barcodedetector-api-with-a-fallback-manual-text-entry-field-if-barcodedetector-is-unavailable-when-a-barcode-qr-code-is-scanned-or-a-badge-id-is-manually-entered-and-submitted-call-loginwithbadgeid-on-the-backend-if-the-response-matches-an-employee-profile-store-the-session-in-authcontext-same-as-regular-login-and-redirect-the-user-to-their-role-appropriate-dashboard-show-an-inline-error-message-inside-the-modal-if-the-badge-id-is-not-recognized-the-modal-must-have-a-close-button-to-dismiss-without-logging-in",
+      "title": "In `frontend/src/pages/LoginPage.tsx`, add a 'Login with Staff ID Badge' link below the existing login button. Clicking this link opens a modal overlay containing an ID scanner UI. The scanner must use the browser's camera via the `BarcodeDetector` API (with a fallback manual text-entry field if `BarcodeDetector` is unavailable). When a barcode/QR code is scanned or a badge ID is manually entered and submitted, call `loginWithBadgeId` on the backend. If the response matches an employee profile, store the session in AuthContext (same as regular login) and redirect the user to their role-appropriate dashboard. Show an inline error message inside the modal if the badge ID is not recognized. The modal must have a close button to dismiss without logging in.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-scheduling-pages-schedulingpage-tsx-managerschedulingpage-tsx-so-the-shift-creation-edit-form-allows-end-time-to-be-before-start-time-remove-any-client-side-validation-that-blocks-end-time-start-time-display-overnight-shifts-with-a-visual-indicator-e-g-a-moon-icon-or-overnight-label-in-the-calendar-grid-so-users-can-distinguish-them-from-standard-shifts",
+      "title": "Update the frontend scheduling pages (`SchedulingPage.tsx`, `ManagerSchedulingPage.tsx`) so the shift creation/edit form allows end time to be before start time. Remove any client-side validation that blocks end time < start time. Display overnight shifts with a visual indicator (e.g., a moon icon or 'Overnight' label) in the calendar grid so users can distinguish them from standard shifts.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-addemployeepage-tsx-and-employeedetailpage-tsx-hr-admin-forms-to-include-a-required-direct-manager-dropdown-field-the-dropdown-must-be-populated-from-the-list-of-active-employees-with-a-manager-role-if-the-employee-being-created-edited-has-a-manager-role-the-field-should-be-read-only-and-display-human-resources-form-submission-must-be-blocked-with-an-inline-validation-error-if-direct-manager-is-not-selected-for-a-non-manager-employee",
+      "title": "Update `AddEmployeePage.tsx` and `EmployeeDetailPage.tsx` (HR Admin forms) to include a required 'Direct Manager' dropdown field. The dropdown must be populated from the list of active employees with a Manager role. If the employee being created/edited has a Manager role, the field should be read-only and display 'Human Resources'. Form submission must be blocked with an inline validation error if 'Direct Manager' is not selected for a non-manager employee.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-managerschedulingpage-tsx-to-implement-the-draft-publish-workflow-when-a-manager-creates-or-modifies-shifts-they-are-saved-as-drafts-by-default-and-shown-in-the-calendar-with-a-draft-badge-add-a-prominent-publish-schedule-button-at-the-top-of-the-page-clicking-it-calls-the-publishschedule-backend-endpoint-for-the-selected-department-and-current-week-changing-all-draft-shifts-to-published-and-updating-the-button-label-to-unpublish-schedule-clicking-unpublish-schedule-calls-unpublishschedule-and-reverts-shifts-to-draft-status-show-a-toast-notification-on-publish-and-unpublish-actions",
+      "title": "Update `ManagerSchedulingPage.tsx` to implement the draft/publish workflow. When a manager creates or modifies shifts, they are saved as drafts by default and shown in the calendar with a 'Draft' badge. Add a prominent 'Publish Schedule' button at the top of the page. Clicking it calls the `publishSchedule` backend endpoint for the selected department and current week, changing all draft shifts to published and updating the button label to 'Unpublish Schedule'. Clicking 'Unpublish Schedule' calls `unpublishSchedule` and reverts shifts to draft status. Show a toast notification on publish and unpublish actions.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-schedulingpage-tsx-hr-admin-scheduling-to-reflect-the-draft-publish-status-of-shifts-show-draft-shifts-with-a-draft-badge-in-the-calendar-hr-admins-can-also-publish-unpublish-schedules-via-the-same-publish-schedule-unpublish-schedule-button-pattern-ensure-employeeschedulepage-tsx-and-supervisorschedulepage-tsx-only-display-published-shifts",
+      "title": "Update `SchedulingPage.tsx` (HR Admin scheduling) to reflect the draft/publish status of shifts. Show draft shifts with a 'Draft' badge in the calendar. HR Admins can also publish/unpublish schedules via the same 'Publish Schedule' / 'Unpublish Schedule' button pattern. Ensure `EmployeeSchedulePage.tsx` and `SupervisorSchedulePage.tsx` only display published shifts.",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-hooks-usequeries-ts-add-react-query-hooks-for-the-timesheet-feature-usetimesheets-query-fetches-all-timesheets-visible-to-the-current-user-usesubmittimesheet-mutation-calls-submittimesheet-backend-endpoint-maps-ok-err-to-resolved-rejected-usemanagerreviewtimesheet-mutation-calls-managerreviewtimesheet-maps-ok-err-usehrreviewtimesheet-mutation-calls-hrreviewtimesheet-maps-ok-err-on-success-of-any-mutation-invalidate-the-timesheets-query-cache",
+      "title": "In `frontend/src/hooks/useQueries.ts`, add React Query hooks for the timesheet feature: `useTimesheets` (query — fetches all timesheets visible to the current user), `useSubmitTimesheet` (mutation — calls `submitTimesheet` backend endpoint, maps #ok/#err to resolved/rejected), `useManagerReviewTimesheet` (mutation — calls `managerReviewTimesheet`, maps #ok/#err), `useHrReviewTimesheet` (mutation — calls `hrReviewTimesheet`, maps #ok/#err). On success of any mutation, invalidate the timesheets query cache.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-frontend-src-pages-employee-employeetimesheetpage-tsx-this-page-allows-employees-to-build-and-submit-a-weekly-timesheet-the-ui-must-include-a-week-selector-defaults-to-current-week-a-table-with-one-row-per-day-of-the-selected-week-monday-sunday-showing-date-start-time-input-end-time-input-and-auto-calculated-hours-a-running-total-hours-display-a-submit-timesheet-button-that-calls-usesubmittimesheet-inline-validation-errors-if-start-end-times-are-missing-for-any-filled-row-a-toast-notification-on-successful-submission-and-a-section-below-the-form-listing-the-employee-s-previously-submitted-timesheets-with-their-status-badges-submitted-pending-manager-review-managerapproved-pending-hr-review-managerdenied-denied-by-manager-hrapproved-approved-hrdenied-denied-by-hr-match-the-dark-navy-amber-visual-theme",
+      "title": "Create `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`. This page allows employees to build and submit a weekly timesheet. The UI must include: a week selector (defaults to current week), a table with one row per day of the selected week (Monday–Sunday) showing date, start time input, end time input, and auto-calculated hours, a running total hours display, a 'Submit Timesheet' button that calls `useSubmitTimesheet`, inline validation errors if start/end times are missing for any filled row, a toast notification on successful submission, and a section below the form listing the employee's previously submitted timesheets with their status badges (#submitted = 'Pending Manager Review', #managerApproved = 'Pending HR Review', #managerDenied = 'Denied by Manager', #hrApproved = 'Approved', #hrDenied = 'Denied by HR'). Match the dark navy/amber visual theme.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-frontend-src-pages-manager-managertimesheetpage-tsx-this-page-shows-the-manager-a-list-of-all-timesheets-submitted-by-their-team-members-split-into-two-sections-pending-your-review-status-submitted-and-reviewed-processed-all-other-statuses-for-each-pending-timesheet-show-employee-name-week-date-range-total-hours-and-approve-deny-action-buttons-clicking-approve-calls-usemanagerreviewtimesheet-with-approved-true-and-an-optional-comment-clicking-deny-opens-a-small-inline-modal-requiring-a-denial-comment-then-calls-usemanagerreviewtimesheet-with-approved-false-and-the-comment-show-a-toast-on-success-or-error-reviewed-timesheets-show-their-current-status-badge-and-any-comments-match-the-dark-navy-amber-visual-theme",
+      "title": "Create `frontend/src/pages/manager/ManagerTimesheetPage.tsx`. This page shows the manager a list of all timesheets submitted by their team members, split into two sections: 'Pending Your Review' (status = #submitted) and 'Reviewed / Processed' (all other statuses). For each pending timesheet, show employee name, week date range, total hours, and Approve/Deny action buttons. Clicking Approve calls `useManagerReviewTimesheet` with approved=true and an optional comment. Clicking Deny opens a small inline modal requiring a denial comment, then calls `useManagerReviewTimesheet` with approved=false and the comment. Show a toast on success or error. Reviewed timesheets show their current status badge and any comments. Match the dark navy/amber visual theme.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-frontend-src-pages-hr-hrtimesheetpage-tsx-this-page-shows-hr-admin-all-timesheets-that-have-been-manager-approved-status-managerapproved-in-a-pending-final-hr-approval-section-and-all-other-processed-timesheets-all-statuses-in-an-all-timesheets-section-with-filtering-by-status-and-employee-name-search-for-each-manager-approved-timesheet-show-employee-name-week-date-range-total-hours-manager-comment-and-final-approve-final-deny-action-buttons-clicking-final-approve-calls-usehrreviewtimesheet-with-approved-true-clicking-final-deny-opens-an-inline-modal-requiring-an-hr-comment-then-calls-usehrreviewtimesheet-with-approved-false-show-a-toast-on-success-or-error-match-the-dark-navy-amber-visual-theme",
+      "title": "Create `frontend/src/pages/hr/HRTimesheetPage.tsx`. This page shows HR Admin all timesheets that have been manager-approved (status = #managerApproved) in a 'Pending Final HR Approval' section, and all other processed timesheets (all statuses) in an 'All Timesheets' section with filtering by status and employee name search. For each manager-approved timesheet, show employee name, week date range, total hours, manager comment, and Final Approve/Final Deny action buttons. Clicking Final Approve calls `useHrReviewTimesheet` with approved=true. Clicking Final Deny opens an inline modal requiring an HR comment, then calls `useHrReviewTimesheet` with approved=false. Show a toast on success or error. Match the dark navy/amber visual theme.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-timesheets-navigation-link-to-the-hr-admin-sidebar-in-frontend-src-layouts-hradminlayout-tsx-pointing-to-hr-timesheets-register-the-route-in-frontend-src-app-tsx-under-the-hr-admin-route-tree-mapping-hr-timesheets-to-hrtimesheetpage-add-a-timesheets-navigation-link-to-the-manager-sidebar-in-frontend-src-layouts-managerlayout-tsx-pointing-to-manager-timesheets-register-the-route-in-frontend-src-app-tsx-under-the-manager-route-tree-mapping-manager-timesheets-to-managertimesheetpage-add-a-timesheet-navigation-link-to-the-employee-sidebar-in-frontend-src-layouts-employeelayout-tsx-pointing-to-employee-timesheet-register-the-route-in-frontend-src-app-tsx-under-the-employee-route-tree-mapping-employee-timesheet-to-employeetimesheetpage",
+      "title": "Add a 'Timesheets' navigation link to the HR Admin sidebar in `frontend/src/layouts/HRAdminLayout.tsx` pointing to `/hr/timesheets`. Register the route in `frontend/src/App.tsx` under the HR Admin route tree, mapping `/hr/timesheets` to `HRTimesheetPage`. Add a 'Timesheets' navigation link to the Manager sidebar in `frontend/src/layouts/ManagerLayout.tsx` pointing to `/manager/timesheets`. Register the route in `frontend/src/App.tsx` under the Manager route tree, mapping `/manager/timesheets` to `ManagerTimesheetPage`. Add a 'Timesheet' navigation link to the Employee sidebar in `frontend/src/layouts/EmployeeLayout.tsx` pointing to `/employee/timesheet`. Register the route in `frontend/src/App.tsx` under the Employee route tree, mapping `/employee/timesheet` to `EmployeeTimesheetPage`.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-that-when-a-schedule-is-published-shift-status-transitions-from-draft-to-published-via-publishschedule-the-employee-s-schedule-page-frontend-src-pages-employee-employeeschedulepage-tsx-and-employee-dashboard-frontend-src-pages-employee-employeedashboard-tsx-immediately-reflect-the-newly-published-shifts-without-requiring-a-page-reload-the-useshifts-or-equivalent-query-used-in-those-pages-must-refetch-published-shifts-automatically-either-via-a-short-polling-interval-e-g-every-30-seconds-or-by-ensuring-the-react-query-stale-time-is-set-to-0-so-the-data-is-always-considered-stale-and-refetched-on-mount-published-shifts-must-be-visible-to-employees-the-moment-they-navigate-to-their-schedule-page-after-a-publish-action",
+      "title": "Ensure that when a schedule is published (shift status transitions from #draft to #published via `publishSchedule`), the employee's schedule page (`frontend/src/pages/employee/EmployeeSchedulePage.tsx`) and employee dashboard (`frontend/src/pages/employee/EmployeeDashboard.tsx`) immediately reflect the newly published shifts without requiring a page reload. The `useShifts` or equivalent query used in those pages must refetch published shifts automatically — either via a short polling interval (e.g., every 30 seconds) or by ensuring the React Query stale time is set to 0 so the data is always considered stale and refetched on mount. Published shifts must be visible to employees the moment they navigate to their schedule page after a publish action.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Hiring/recruitment features (job postings, applicant tracking, onboarding)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Staff management features (employee profiles, org chart, role management)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Scheduling features (shift scheduling, calendar view)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Time off request and approval workflow",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "PTO policy configuration and tracking",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Login-only access with no self-registration (admin creates accounts)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Role-based access: HR admin, Manager, Employee",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Pre-configured admin login: username richaadi0, password 3vtpxdgf",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Implement a backend authentication system with hardcoded/seeded user accounts (no self-registration). Store users with username, hashed password, role (HR Admin, Manager, Employee), and active status. Pre-seed one HR Admin account with username 'richaadi0' and password '3vtpxdgf'. Expose login and session validation endpoints.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Implement role-based access control (RBAC) with three roles: HR Admin, Manager, and Employee. HR Admin has full access to all platform features. Managers can view/manage their team, approve time off, and view schedules. Employees can view their own profile, submit time-off requests, and view their schedule.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Implement staff management features in the backend: employee profiles (full name, email, phone, department, job title, start date, role, status), org chart data structure (manager-to-employee relationships), and CRUD operations for employee records. HR Admins can create, update, deactivate, and delete employees. HR Admins can also create login accounts for new employees.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Implement hiring and recruitment features in the backend: job postings (title, department, description, status: open/closed/draft), applicant records (name, contact, resume notes, applied date, stage: Applied/Screening/Interview/Offer/Hired/Rejected), and stage progression tracking. HR Admins can manage all postings and applicants. Include a basic onboarding checklist per new hire.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Implement scheduling features in the backend: shifts (employee, date, start time, end time, department), weekly/monthly schedule views by employee and department, shift assignment by HR Admin or Manager, and conflict detection (overlapping shifts for the same employee).",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Implement time-off request and approval workflow in the backend: employees submit time-off requests (type, start date, end date, notes), Managers and HR Admins can approve or deny requests with comments, and request status transitions (Pending → Approved/Denied). Notify the employee record when status changes.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Implement PTO policy configuration and tracking in the backend: define PTO policies (policy name, accrual rate per pay period, max carry-over days, eligible leave types), assign policies to employees or departments, track each employee's current PTO balance, and automatically deduct upon approved time-off requests.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Add all-access (HR Admin) login account: display name 'IU', username 'Adirich', password '3vtpxdgf'",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Audit and fix the backend authentication logic in main.mo: ensure the login function correctly validates username/password credentials against stored accounts, returns a valid session token or user record on success, and returns a clear error on failure. Verify that the pre-seeded HR Admin account (username: 'richaadi0', password: '3vtpxdgf') is always present at canister initialization via stable state or post-upgrade hooks.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Add a second pre-seeded HR Admin account with display name 'IU', username 'Adirich', and password '3vtpxdgf' to the backend. This account must be seeded at canister initialization alongside the existing 'richaadi0' account and must have full HR Admin role access.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Fix login access for pre-seeded admin accounts (richaadi0 and Adirich) — currently returns 'access denied' instead of granting login",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Audit and fix the backend authentication logic in main.mo so that the pre-seeded HR Admin accounts ('richaadi0' / '3vtpxdgf' and 'Adirich' / '3vtpxdgf') are always present in stable state at canister initialization and survive upgrades. Ensure the login function validates credentials against these seeded accounts correctly and returns a valid user record (not an 'access denied' error) when the correct username and password are supplied.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Hide sidebar navigation tabs behind a hamburger (three-line) menu toggle, and make the sidebar scrollable so the logout button is reachable via scroll",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Allow HR Admins and Managers to create usernames and passwords for new accounts (not just HR Admin). Add account creation capability to Manager role as well.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "Fix all application errors and make the app realistic — improve data realism, UI polish, and functional correctness across all modules.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Extend the backend `createAccount` function so that users with the `Manager` role can also create new login accounts (username, password, role), in addition to HR Admins. Update the role-based authorization check on the account creation endpoint to permit both `#hrAdmin` and `#manager` callers. Ensure the created account is stored in stable state and is immediately queryable.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Audit and fix all known backend errors in `main.mo`: (1) Ensure pre-seeded HR Admin accounts ('richaadi0'/'3vtpxdgf' and 'Adirich'/'3vtpxdgf') are always present in stable state after initialization and upgrades. (2) Ensure the `login` function performs case-sensitive credential matching and returns a proper user record on success instead of an error variant. (3) Ensure all CRUD endpoints (employees, shifts, time-off, PTO, job postings, applicants) return well-formed response variants with no runtime traps. (4) Fix any authorization guard logic that incorrectly denies valid role-holders access to permitted operations.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Add a Supervisor role to the RBAC system. Supervisors can view all schedules and approve/deny time-off requests, but cannot hire applicants, add new employees, or terminate employees. Only HR Admin can assign/change user roles (Manager, Supervisor, Employee).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "When HR Admin or Manager creates a new employee record, they must also set a username and password for that employee so the employee can log in immediately. The employee creation form should include username and password fields alongside profile fields.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Polish and redesign the HR Admin and Manager dashboards to look super nice and modern — improved card layouts, animations, color accents, icons, and overall visual appeal.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Add a Supervisor role to the backend RBAC system. Supervisors can: (1) view all schedules, (2) approve or deny time-off requests with a comment. Supervisors cannot: hire applicants, create job postings, add new employees, or terminate/deactivate employees. Update the backend role type to include #supervisor alongside #hrAdmin, #manager, and #employee. Update all authorization guards on relevant endpoints accordingly.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Restrict role assignment to HR Admin only. Only callers with #hrAdmin role may set or change a user account's role (Manager, Supervisor, or Employee). Manager callers can create accounts but may only assign #employee or #manager roles — not #hrAdmin or #supervisor. Update the backend createAccount and any updateAccount/setRole endpoints to enforce this.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "When creating a new employee record (via HR Admin or Manager), require the creator to also supply a username and password for that employee's login account. The backend createEmployee endpoint (or a combined createEmployeeWithAccount endpoint) must atomically create both the Employee profile and the corresponding login account in the users map. If either the username is already taken or required fields are missing, return a descriptive error and do not create a partial record.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Polish and redesign the HR Admin dashboard (HRDashboard.tsx) and Manager dashboard (ManagerDashboard.tsx) to feel premium and modern. Apply: animated gradient or glassmorphism-style KPI cards with large bold numbers and descriptive labels, icon accents per KPI (e.g., users icon for headcount, calendar for shifts, clock for time-off), subtle entrance animations (fade-in / slide-up) on card render, a data summary bar or activity feed section showing recent actions, and improved section headers with dividers. Maintain the dark navy / amber color palette.",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Add a 'Delete Employee' button to the employee management page that permanently removes the employee record from the app (HR Admin and Manager only).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Add a 'Login with Staff ID Badge' link on the login page. When clicked, it opens an ID scanner (camera/barcode scanner). If the scanned ID number matches an employee profile's ID number, it logs the user into their profile/dashboard.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Add a backend `deleteEmployee` endpoint to `backend/main.mo` that permanently removes an employee record from the employees map by employee ID. Only callers with `#hrAdmin` or `#manager` roles may invoke this endpoint. Return `#ok` on success or `#err` with a descriptive message if the employee is not found or the caller is unauthorized.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Add a backend `getEmployeeByBadgeId` query to `backend/main.mo` that accepts a badge/staff ID string and returns the matching employee record (or an error if not found). Each Employee record must have a `badgeId` field (Text). Ensure existing seeded employees are given distinct realistic badge ID values (e.g., 'EMP-001', 'EMP-002', etc.).",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Add a `loginWithBadgeId` backend function to `backend/main.mo` that accepts a badge ID string, looks up the matching employee, finds their linked user account, and returns the same session data (role, username, displayName) as the regular `login` function. Return `#err` if the badge ID does not match any employee or if no linked account exists for that employee.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "Allow shift end time to be before start time to support overnight shifts (e.g., 10pm - 6:30am).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "Require HR Admin to assign a direct manager to every employee. Manager's direct manager field should display 'Human Resources'. Enforce this in the employee management form.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-51",
+      "summary": "Redesign the scheduling calendar to have a draft/publish workflow: managers build a schedule in draft mode and must click a 'Publish' button to make it live. Published schedules can be unpublished by clicking the button again.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-52",
+      "summary": "Update the backend shift data model in `backend/main.mo` to support overnight shifts where end time can be numerically less than start time (e.g., 22:00 – 06:30). Remove any validation that rejects end time < start time. When calculating shift duration or detecting conflicts, treat end times less than start times as crossing midnight (add 24 hours to end time for comparison). Ensure all existing seeded shifts remain valid.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-54",
+      "summary": "Update the `Employee` record type in `backend/main.mo` to include a required `directManagerId` field (Text, nullable/optional). Update `createEmployee` and `updateEmployee` endpoints to accept and store this field. For manager-role employees, the `directManagerId` should store a sentinel value indicating 'Human Resources' (e.g., 'HR'). Ensure the `deleteEmployee` and query endpoints return this field. If `directManagerId` is missing on creation for a non-manager/non-HR employee, return a descriptive `#err`.",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-55",
+      "summary": "Update `backend/migration.mo` to migrate existing employee records to include the new `directManagerId` field, defaulting to an empty string or 'HR' for manager-role employees and 'UNASSIGNED' for others so existing data does not cause runtime errors.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-57",
+      "summary": "Add a `scheduleStatus` field (variant `#draft` | `#published`) to the Shift or a new Schedule record in `backend/main.mo`. Add a `publishSchedule` endpoint that transitions all draft shifts for a given department and week to published status, and an `unpublishSchedule` endpoint that reverts them back to draft. Shifts in draft status should only be visible to HR Admin and Managers; published shifts are visible to all roles including Employees and Supervisors.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-58",
+      "summary": "When a schedule is published, employees can immediately view their published shifts on their dashboard/schedule page in real-time.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-59",
+      "summary": "Add a Timesheet Management tab to HR Admin and Manager dashboards. Add a Timesheet tab to the Employee dashboard. Employees can enter the days they worked and their times, then submit the timesheet. Submitted timesheets go to Manager for approval or denial. After Manager action, the timesheet is forwarded to HR Admin for final approval or denial (two-stage approval workflow).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-60",
+      "summary": "Add a `Timesheet` data type and stable map to `backend/main.mo`. A Timesheet record must include: id (Text), employeeId (Text), employeeUsername (Text), entries (array of { date: Text, startTime: Text, endTime: Text, hoursWorked: Float }), totalHours (Float), status (variant: #submitted | #managerApproved | #managerDenied | #hrApproved | #hrDenied), submittedAt (Int nanoseconds), managerComment (optional Text), hrComment (optional Text), weekStartDate (Text). Add backend endpoints: `submitTimesheet` (employee only — creates a new timesheet record with status #submitted), `getTimesheets` (returns all timesheets; HR Admin sees all, Manager sees their team's, Employee sees only their own), `managerReviewTimesheet` (Manager or HR Admin — approves or denies a #submitted timesheet, sets status to #managerApproved or #managerDenied, stores managerComment), `hrReviewTimesheet` (HR Admin only — approves or denies a #managerApproved timesheet, sets status to #hrApproved or #hrDenied, stores hrComment). Only HR Admin and Manager callers may call the review endpoints. Return `#ok` or `#err` with descriptive messages.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Aerotek (IU) Employee Management",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
