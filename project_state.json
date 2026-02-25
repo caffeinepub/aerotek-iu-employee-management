@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 19,
+  "projectStateVersion": 23,
   "summary": "Building 'Aerotek (IU) Employee Management' — a comprehensive HR platform with hiring, staff management, scheduling, time off, and PTO policy features. Login-only access (no sign-up). Roles for HR personnel, managers, supervisors, and employees. HR Admin can set user roles (Manager, Supervisor, Employee). Managers and HR Admins can create employees with login credentials. Supervisors can view schedules and approve time off but cannot hire, add, or terminate employees. Pre-configured admin logins: richaadi0 / 3vtpxdgf and Adirich / 3vtpxdgf.",
   "architectural_notes": [
     "Login-only platform — no public sign-up; accounts created by HR admin only",
@@ -15,9 +15,10 @@
   ],
   "known_issues": [
     "Login system has errors preventing account creation and authentication — requires fix",
-    "Pre-seeded admin accounts (richaadi0, Adirich) are denied login access — auth validation not recognizing seeded credentials"
+    "Pre-seeded admin accounts (richaadi0, Adirich) are denied login access — auth validation not recognizing seeded credentials",
+    "App shows 'Something went wrong' error on startup — likely a runtime initialization crash"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-build-a-login-only-frontend-entry-point-show-a-branded-login-screen-with-the-aerotek-iu-employee-management-logo-name-username-and-password-fields-and-a-login-button-no-sign-up-link-or-registration-form-redirect-unauthenticated-users-to-the-login-page-after-login-route-users-to-a-role-appropriate-dashboard",
@@ -362,6 +363,22 @@
         "REQ-67"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-the-frontend-application-startup-crash-that-displays-a-something-went-wrong-error-screen-on-initial-load-inspect-frontend-src-app-tsx-frontend-src-contexts-authcontext-tsx-frontend-src-hooks-useactor-ts-and-frontend-src-hooks-usequeries-ts-for-any-errors-that-occur-during-mount-including-errors-reading-from-sessionstorage-null-undefined-actor-access-before-initialization-broken-route-component-imports-missing-lazy-loaded-page-components-or-queryclient-configuration-errors-add-error-boundaries-where-needed-the-app-must-load-to-the-login-page-without-any-crash-screen-on-first-visit",
+      "title": "Audit and fix the frontend application startup crash that displays a 'Something went wrong' error screen on initial load. Inspect `frontend/src/App.tsx`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/hooks/useActor.ts`, and `frontend/src/hooks/useQueries.ts` for any errors that occur during mount — including errors reading from sessionStorage, null/undefined actor access before initialization, broken route component imports, missing lazy-loaded page components, or QueryClient configuration errors. Add error boundaries where needed. The app must load to the login page without any crash screen on first visit.",
+      "reqIds": [
+        "REQ-77"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-all-typescript-compilation-errors-across-the-frontend-that-may-be-causing-the-startup-crash-resolve-type-mismatches-on-the-directmanagerid-field-employee-type-schedulestatus-field-shift-type-and-all-timesheet-related-types-across-usequeries-ts-employeetimesheetpage-tsx-managertimesheetpage-tsx-hrtimesheetpage-tsx-scheduling-pages-and-employee-management-pages-ensure-the-project-builds-without-typescript-errors-or-warnings-that-would-prevent-successful-deployment",
+      "title": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
+      "reqIds": [
+        "REQ-78"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -692,6 +709,78 @@
       "summary": "Add a `Timesheet` data type and stable map to `backend/main.mo`. A Timesheet record must include: id (Text), employeeId (Text), employeeUsername (Text), entries (array of { date: Text, startTime: Text, endTime: Text, hoursWorked: Float }), totalHours (Float), status (variant: #submitted | #managerApproved | #managerDenied | #hrApproved | #hrDenied), submittedAt (Int nanoseconds), managerComment (optional Text), hrComment (optional Text), weekStartDate (Text). Add backend endpoints: `submitTimesheet` (employee only — creates a new timesheet record with status #submitted), `getTimesheets` (returns all timesheets; HR Admin sees all, Manager sees their team's, Employee sees only their own), `managerReviewTimesheet` (Manager or HR Admin — approves or denies a #submitted timesheet, sets status to #managerApproved or #managerDenied, stores managerComment), `hrReviewTimesheet` (HR Admin only — approves or denies a #managerApproved timesheet, sets status to #hrApproved or #hrDenied, stores hrComment). Only HR Admin and Manager callers may call the review endpoints. Return `#ok` or `#err` with descriptive messages.",
       "reqIds": [
         "REQ-61"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-61",
+      "summary": "Audit and fix all TypeScript compilation errors and runtime errors in the frontend. Resolve any type mismatches, missing imports, undefined variable references, and incorrect prop types across all pages and hooks. Ensure the project builds without errors or warnings.",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-62",
+      "summary": "Fix all React Query hook errors in `frontend/src/hooks/useQueries.ts`. Ensure every query and mutation correctly accesses the actor before calling backend methods, guards against null/undefined actor states, and maps Motoko `#ok`/`#err` variants to resolved/rejected Promise states consistently. This includes `useTimesheets`, `useSubmitTimesheet`, `useManagerReviewTimesheet`, `useHrReviewTimesheet`, `useDeleteEmployee`, `useLoginWithBadgeId`, and all existing hooks.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-63",
+      "summary": "Fix all runtime errors in the timesheet pages: `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, and `HRTimesheetPage.tsx`. Ensure data fetched from the backend is correctly typed and accessed, all optional fields are null-checked before rendering, and status badge mappings cover all possible timesheet status variants (`#submitted`, `#managerApproved`, `#managerDenied`, `#hrApproved`, `#hrDenied`).",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-64",
+      "summary": "Fix all Motoko backend compilation errors in `backend/main.mo`. Ensure all type definitions are consistent (Timesheet, Employee with `directManagerId`, Shift with `scheduleStatus`), all endpoints reference declared types correctly, stable variable declarations match their usage, and there are no duplicate or conflicting function definitions. The backend must compile and deploy without errors.",
+      "reqIds": [
+        "REQ-71"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-65",
+      "summary": "Fix all routing errors in `frontend/src/App.tsx`. Ensure every route has a corresponding page component that is properly imported. Verify that `/hr/timesheets`, `/manager/timesheets`, and `/employee/timesheet` routes are registered and mapped to their respective page components (`HRTimesheetPage`, `ManagerTimesheetPage`, `EmployeeTimesheetPage`). Fix any routes that result in blank screens or 404-style rendering.",
+      "reqIds": [
+        "REQ-72"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-66",
+      "summary": "Fix all errors in the scheduling pages (`SchedulingPage.tsx`, `ManagerSchedulingPage.tsx`, `SupervisorSchedulePage.tsx`, `EmployeeSchedulePage.tsx`) related to the `scheduleStatus` field on shifts. Ensure draft/published status is read and compared without runtime errors. Guard against shifts that may be missing the `scheduleStatus` field (treat missing as `#draft`). Ensure the publish/unpublish button state is computed correctly without crashing.",
+      "reqIds": [
+        "REQ-73"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-67",
+      "summary": "Fix all errors in the employee management pages (`EmployeesPage.tsx`, `AddEmployeePage.tsx`, `EmployeeDetailPage.tsx`) related to the `directManagerId` field. Ensure the manager dropdown populates correctly, handles empty lists without crashing, and that form submission does not error out when `directManagerId` is present or absent. Ensure the `useDeleteEmployee` mutation is correctly wired and does not produce unhandled errors.",
+      "reqIds": [
+        "REQ-74"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-68",
+      "summary": "Fix all login-related errors. Ensure `LoginPage.tsx`, `useAuth.ts`, `AuthContext.tsx`, and `useQueries.ts` work together without runtime errors for all roles including the newly added Supervisor role. The badge ID login modal must not throw unhandled exceptions when `BarcodeDetector` is unavailable. Ensure session storage read/write does not crash on malformed data.",
+      "reqIds": [
+        "REQ-75"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-69",
+      "summary": "Audit and fix the Motoko backend (`backend/main.mo`) for any runtime initialization errors that cause the canister to trap or fail on startup. Ensure all stable variable declarations are valid, all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet) are consistent and non-conflicting, all pre-seeded data (accounts for 'richaadi0' and 'Adirich') is initialized without errors, and all post-upgrade hooks execute without trapping. The backend must deploy and initialize cleanly without any runtime errors.",
+      "reqIds": [
+        "REQ-76"
       ],
       "status": "pending"
     }

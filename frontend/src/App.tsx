@@ -1,390 +1,296 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import {
   createRouter,
   createRoute,
   createRootRoute,
   RouterProvider,
-  redirect,
   Outlet,
+  redirect,
 } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from './components/ui/sonner';
-import { ThemeProvider } from 'next-themes';
+import { Toaster } from '@/components/ui/sonner';
+import { AuthProvider, getStoredSession } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
-// Auth
-import { getStoredSession } from './hooks/useAuth';
+// Lazy load pages
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+
+// HR Pages
+const HRDashboard = lazy(() => import('./pages/hr/HRDashboard'));
+const EmployeesPage = lazy(() => import('./pages/hr/EmployeesPage'));
+const AddEmployeePage = lazy(() => import('./pages/hr/AddEmployeePage'));
+const EmployeeDetailPage = lazy(() => import('./pages/hr/EmployeeDetailPage'));
+const SchedulingPage = lazy(() => import('./pages/hr/SchedulingPage'));
+const TimeOffRequestsPage = lazy(() => import('./pages/hr/TimeOffRequestsPage'));
+const HiringPage = lazy(() => import('./pages/hr/HiringPage'));
+const CreateJobPostingPage = lazy(() => import('./pages/hr/CreateJobPostingPage'));
+const ApplicantPipelinePage = lazy(() => import('./pages/hr/ApplicantPipelinePage'));
+const PTOPoliciesPage = lazy(() => import('./pages/hr/PTOPoliciesPage'));
+const PTOPolicyFormPage = lazy(() => import('./pages/hr/PTOPolicyFormPage'));
+const PTOBalancesPage = lazy(() => import('./pages/hr/PTOBalancesPage'));
+const AccountManagementPage = lazy(() => import('./pages/hr/AccountManagementPage'));
+const HRTimesheetPage = lazy(() => import('./pages/hr/HRTimesheetPage'));
+
+// Manager Pages
+const ManagerDashboard = lazy(() => import('./pages/manager/ManagerDashboard'));
+const ManagerTeamPage = lazy(() => import('./pages/manager/ManagerTeamPage'));
+const ManagerSchedulingPage = lazy(() => import('./pages/manager/ManagerSchedulingPage'));
+const ManagerTimeOffPage = lazy(() => import('./pages/manager/ManagerTimeOffPage'));
+const ManagerAccountManagementPage = lazy(() => import('./pages/manager/ManagerAccountManagementPage'));
+const ManagerTimesheetPage = lazy(() => import('./pages/manager/ManagerTimesheetPage'));
+
+// Employee Pages
+const EmployeeDashboard = lazy(() => import('./pages/employee/EmployeeDashboard'));
+const EmployeeSchedulePage = lazy(() => import('./pages/employee/EmployeeSchedulePage'));
+const EmployeeTimeOffPage = lazy(() => import('./pages/employee/EmployeeTimeOffPage'));
+const EmployeeTimesheetPage = lazy(() => import('./pages/employee/EmployeeTimesheetPage'));
+
+// Supervisor Pages
+const SupervisorDashboard = lazy(() => import('./pages/supervisor/SupervisorDashboard'));
+const SupervisorSchedulePage = lazy(() => import('./pages/supervisor/SupervisorSchedulePage'));
+const SupervisorTimeOffPage = lazy(() => import('./pages/supervisor/SupervisorTimeOffPage'));
 
 // Layouts
-import HRAdminLayout from './layouts/HRAdminLayout';
-import ManagerLayout from './layouts/ManagerLayout';
-import EmployeeLayout from './layouts/EmployeeLayout';
-import SupervisorLayout from './layouts/SupervisorLayout';
+const HRAdminLayout = lazy(() => import('./layouts/HRAdminLayout'));
+const ManagerLayout = lazy(() => import('./layouts/ManagerLayout'));
+const EmployeeLayout = lazy(() => import('./layouts/EmployeeLayout'));
+const SupervisorLayout = lazy(() => import('./layouts/SupervisorLayout'));
 
-// Pages - HR
-import HRDashboard from './pages/hr/HRDashboard';
-import EmployeesPage from './pages/hr/EmployeesPage';
-import AddEmployeePage from './pages/hr/AddEmployeePage';
-import EmployeeDetailPage from './pages/hr/EmployeeDetailPage';
-import HiringPage from './pages/hr/HiringPage';
-import CreateJobPostingPage from './pages/hr/CreateJobPostingPage';
-import ApplicantPipelinePage from './pages/hr/ApplicantPipelinePage';
-import SchedulingPage from './pages/hr/SchedulingPage';
-import TimeOffRequestsPage from './pages/hr/TimeOffRequestsPage';
-import PTOPoliciesPage from './pages/hr/PTOPoliciesPage';
-import PTOPolicyFormPage from './pages/hr/PTOPolicyFormPage';
-import PTOBalancesPage from './pages/hr/PTOBalancesPage';
-import AccountManagementPage from './pages/hr/AccountManagementPage';
-import HRTimesheetPage from './pages/hr/HRTimesheetPage';
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-// Pages - Manager
-import ManagerDashboard from './pages/manager/ManagerDashboard';
-import ManagerTeamPage from './pages/manager/ManagerTeamPage';
-import ManagerSchedulingPage from './pages/manager/ManagerSchedulingPage';
-import ManagerTimeOffPage from './pages/manager/ManagerTimeOffPage';
-import ManagerAccountManagementPage from './pages/manager/ManagerAccountManagementPage';
-import ManagerTimesheetPage from './pages/manager/ManagerTimesheetPage';
+function getSession() {
+  try {
+    return getStoredSession();
+  } catch {
+    return null;
+  }
+}
 
-// Pages - Employee
-import EmployeeDashboard from './pages/employee/EmployeeDashboard';
-import EmployeeSchedulePage from './pages/employee/EmployeeSchedulePage';
-import EmployeeTimeOffPage from './pages/employee/EmployeeTimeOffPage';
-import EmployeeTimesheetPage from './pages/employee/EmployeeTimesheetPage';
-
-// Pages - Supervisor
-import SupervisorDashboard from './pages/supervisor/SupervisorDashboard';
-import SupervisorSchedulePage from './pages/supervisor/SupervisorSchedulePage';
-import SupervisorTimeOffPage from './pages/supervisor/SupervisorTimeOffPage';
-
-// Login
-import LoginPage from './pages/LoginPage';
-
-const queryClient = new QueryClient();
-
-// ===== Root Route =====
+// Root route
 const rootRoute = createRootRoute({
   component: () => (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <Toaster richColors position="top-right" />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      }
+    >
+      <Outlet />
+    </Suspense>
   ),
 });
 
-// ===== Login Route =====
+// Login / index route
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/login',
-  component: LoginPage,
-});
-
-// ===== Index Route =====
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
   path: '/',
+  component: () => <LoginPage />,
   beforeLoad: () => {
-    const session = getStoredSession();
-    if (!session) throw redirect({ to: '/login' });
-    switch (session.role) {
-      case 'hrAdmin':
-        throw redirect({ to: '/hr' });
-      case 'manager':
-        throw redirect({ to: '/manager' });
-      case 'employee':
-        throw redirect({ to: '/employee' });
-      case 'supervisor':
-        throw redirect({ to: '/supervisor/dashboard' });
-      default:
-        throw redirect({ to: '/login' });
+    try {
+      const session = getSession();
+      if (session) {
+        const role = session.role;
+        if (role === 'hrAdmin') throw redirect({ to: '/hr' });
+        if (role === 'manager') throw redirect({ to: '/manager' });
+        if (role === 'employee') throw redirect({ to: '/employee' });
+        if (role === 'supervisor') throw redirect({ to: '/supervisor' });
+      }
+    } catch (err) {
+      // Re-throw redirects, swallow other errors
+      if (err && typeof err === 'object' && 'href' in err) throw err;
     }
   },
-  component: () => null,
 });
 
-// ===== HR Admin Routes =====
+// ===== HR Routes =====
 const hrLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/hr',
+  component: () => <HRAdminLayout />,
   beforeLoad: () => {
-    const session = getStoredSession();
-    if (!session || session.role !== 'hrAdmin') throw redirect({ to: '/login' });
+    try {
+      const session = getSession();
+      if (!session || session.role !== 'hrAdmin') throw redirect({ to: '/' });
+    } catch (err) {
+      if (err && typeof err === 'object' && 'href' in err) throw err;
+      throw redirect({ to: '/' });
+    }
   },
-  component: HRAdminLayout,
 });
 
-const hrIndexRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/',
-  component: HRDashboard,
-});
-
-const hrEmployeesRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/employees',
-  component: EmployeesPage,
-});
-
-const hrEmployeeNewRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/employees/new',
-  component: AddEmployeePage,
-});
-
-const hrEmployeeDetailRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/employees/$id',
-  component: EmployeeDetailPage,
-});
-
-const hrHiringRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/hiring',
-  component: HiringPage,
-});
-
-const hrHiringNewRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/hiring/new',
-  component: CreateJobPostingPage,
-});
-
-const hrHiringPipelineRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/hiring/$postingId/pipeline',
-  component: ApplicantPipelinePage,
-});
-
-const hrSchedulingRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/scheduling',
-  component: SchedulingPage,
-});
-
-const hrTimeOffRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/time-off',
-  component: TimeOffRequestsPage,
-});
-
-const hrTimesheetsRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/timesheets',
-  component: HRTimesheetPage,
-});
-
-const hrPTOPoliciesRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/pto-policies',
-  component: PTOPoliciesPage,
-});
-
-const hrPTOPoliciesNewRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/pto-policies/new',
-  component: PTOPolicyFormPage,
-});
-
-const hrPTOPoliciesEditRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/pto-policies/$id/edit',
-  component: PTOPolicyFormPage,
-});
-
-const hrPTOBalancesRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/pto-policies/balances',
-  component: PTOBalancesPage,
-});
-
-const hrAccountsRoute = createRoute({
-  getParentRoute: () => hrLayoutRoute,
-  path: '/accounts',
-  component: AccountManagementPage,
-});
+const hrDashboardRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/', component: () => <HRDashboard /> });
+const hrEmployeesRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/employees', component: () => <EmployeesPage /> });
+const hrAddEmployeeRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/employees/new', component: () => <AddEmployeePage /> });
+const hrEmployeeDetailRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/employees/$id', component: () => <EmployeeDetailPage /> });
+const hrSchedulingRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/scheduling', component: () => <SchedulingPage /> });
+const hrTimeOffRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/time-off', component: () => <TimeOffRequestsPage /> });
+const hrHiringRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/hiring', component: () => <HiringPage /> });
+const hrCreateJobPostingRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/hiring/new', component: () => <CreateJobPostingPage /> });
+const hrApplicantPipelineRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/hiring/$postingId/pipeline', component: () => <ApplicantPipelinePage /> });
+const hrPTOPoliciesRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/pto-policies', component: () => <PTOPoliciesPage /> });
+const hrPTOPolicyNewRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/pto-policies/new', component: () => <PTOPolicyFormPage /> });
+const hrPTOPolicyEditRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/pto-policies/$id/edit', component: () => <PTOPolicyFormPage /> });
+const hrPTOBalancesRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/pto-policies/balances', component: () => <PTOBalancesPage /> });
+const hrAccountManagementRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/accounts', component: () => <AccountManagementPage /> });
+const hrTimesheetsRoute = createRoute({ getParentRoute: () => hrLayoutRoute, path: '/timesheets', component: () => <HRTimesheetPage /> });
 
 // ===== Manager Routes =====
 const managerLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/manager',
+  component: () => <ManagerLayout />,
   beforeLoad: () => {
-    const session = getStoredSession();
-    if (!session || session.role !== 'manager') throw redirect({ to: '/login' });
+    try {
+      const session = getSession();
+      if (!session || session.role !== 'manager') throw redirect({ to: '/' });
+    } catch (err) {
+      if (err && typeof err === 'object' && 'href' in err) throw err;
+      throw redirect({ to: '/' });
+    }
   },
-  component: ManagerLayout,
 });
 
-const managerIndexRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/',
-  component: ManagerDashboard,
-});
-
-const managerTeamRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/team',
-  component: ManagerTeamPage,
-});
-
-const managerSchedulingRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/scheduling',
-  component: ManagerSchedulingPage,
-});
-
-const managerTimeOffRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/time-off',
-  component: ManagerTimeOffPage,
-});
-
-const managerTimesheetsRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/timesheets',
-  component: ManagerTimesheetPage,
-});
-
-const managerAccountsRoute = createRoute({
-  getParentRoute: () => managerLayoutRoute,
-  path: '/accounts',
-  component: ManagerAccountManagementPage,
-});
+const managerDashboardRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/', component: () => <ManagerDashboard /> });
+const managerTeamRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/team', component: () => <ManagerTeamPage /> });
+const managerSchedulingRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/scheduling', component: () => <ManagerSchedulingPage /> });
+const managerTimeOffRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/time-off', component: () => <ManagerTimeOffPage /> });
+const managerAccountManagementRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/accounts', component: () => <ManagerAccountManagementPage /> });
+const managerTimesheetsRoute = createRoute({ getParentRoute: () => managerLayoutRoute, path: '/timesheets', component: () => <ManagerTimesheetPage /> });
 
 // ===== Employee Routes =====
 const employeeLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/employee',
+  component: () => <EmployeeLayout />,
   beforeLoad: () => {
-    const session = getStoredSession();
-    if (!session || session.role !== 'employee') throw redirect({ to: '/login' });
+    try {
+      const session = getSession();
+      if (!session || session.role !== 'employee') throw redirect({ to: '/' });
+    } catch (err) {
+      if (err && typeof err === 'object' && 'href' in err) throw err;
+      throw redirect({ to: '/' });
+    }
   },
-  component: EmployeeLayout,
 });
 
-const employeeIndexRoute = createRoute({
-  getParentRoute: () => employeeLayoutRoute,
-  path: '/',
-  component: EmployeeDashboard,
-});
-
-const employeeScheduleRoute = createRoute({
-  getParentRoute: () => employeeLayoutRoute,
-  path: '/schedule',
-  component: EmployeeSchedulePage,
-});
-
-const employeeTimesheetRoute = createRoute({
-  getParentRoute: () => employeeLayoutRoute,
-  path: '/timesheet',
-  component: EmployeeTimesheetPage,
-});
-
-const employeeTimeOffRoute = createRoute({
-  getParentRoute: () => employeeLayoutRoute,
-  path: '/time-off',
-  component: EmployeeTimeOffPage,
-});
+const employeeDashboardRoute = createRoute({ getParentRoute: () => employeeLayoutRoute, path: '/', component: () => <EmployeeDashboard /> });
+const employeeScheduleRoute = createRoute({ getParentRoute: () => employeeLayoutRoute, path: '/schedule', component: () => <EmployeeSchedulePage /> });
+const employeeTimeOffRoute = createRoute({ getParentRoute: () => employeeLayoutRoute, path: '/time-off', component: () => <EmployeeTimeOffPage /> });
+const employeeTimesheetRoute = createRoute({ getParentRoute: () => employeeLayoutRoute, path: '/timesheet', component: () => <EmployeeTimesheetPage /> });
 
 // ===== Supervisor Routes =====
 const supervisorLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/supervisor',
+  component: () => <SupervisorLayout />,
   beforeLoad: () => {
-    const session = getStoredSession();
-    if (!session || session.role !== 'supervisor') throw redirect({ to: '/login' });
+    try {
+      const session = getSession();
+      if (!session || session.role !== 'supervisor') throw redirect({ to: '/' });
+    } catch (err) {
+      if (err && typeof err === 'object' && 'href' in err) throw err;
+      throw redirect({ to: '/' });
+    }
   },
-  component: SupervisorLayout,
 });
 
-const supervisorIndexRoute = createRoute({
-  getParentRoute: () => supervisorLayoutRoute,
-  path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/supervisor/dashboard' });
-  },
-  component: () => null,
-});
+const supervisorDashboardRoute = createRoute({ getParentRoute: () => supervisorLayoutRoute, path: '/', component: () => <SupervisorDashboard /> });
+const supervisorScheduleRoute = createRoute({ getParentRoute: () => supervisorLayoutRoute, path: '/schedules', component: () => <SupervisorSchedulePage /> });
+const supervisorTimeOffRoute = createRoute({ getParentRoute: () => supervisorLayoutRoute, path: '/time-off', component: () => <SupervisorTimeOffPage /> });
 
-const supervisorDashboardRoute = createRoute({
-  getParentRoute: () => supervisorLayoutRoute,
-  path: '/dashboard',
-  component: SupervisorDashboard,
-});
-
-const supervisorSchedulesRoute = createRoute({
-  getParentRoute: () => supervisorLayoutRoute,
-  path: '/schedules',
-  component: SupervisorSchedulePage,
-});
-
-const supervisorTimeOffRoute = createRoute({
-  getParentRoute: () => supervisorLayoutRoute,
-  path: '/time-off',
-  component: SupervisorTimeOffPage,
-});
-
-// ===== Catch-all =====
-const catchAllRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '*',
-  beforeLoad: () => {
-    throw redirect({ to: '/' });
-  },
-  component: () => null,
-});
-
-// ===== Route Tree =====
 const routeTree = rootRoute.addChildren([
-  indexRoute,
   loginRoute,
   hrLayoutRoute.addChildren([
-    hrIndexRoute,
+    hrDashboardRoute,
     hrEmployeesRoute,
-    hrEmployeeNewRoute,
+    hrAddEmployeeRoute,
     hrEmployeeDetailRoute,
-    hrHiringRoute,
-    hrHiringNewRoute,
-    hrHiringPipelineRoute,
     hrSchedulingRoute,
     hrTimeOffRoute,
-    hrTimesheetsRoute,
+    hrHiringRoute,
+    hrCreateJobPostingRoute,
+    hrApplicantPipelineRoute,
     hrPTOPoliciesRoute,
-    hrPTOPoliciesNewRoute,
-    hrPTOPoliciesEditRoute,
+    hrPTOPolicyNewRoute,
+    hrPTOPolicyEditRoute,
     hrPTOBalancesRoute,
-    hrAccountsRoute,
+    hrAccountManagementRoute,
+    hrTimesheetsRoute,
   ]),
   managerLayoutRoute.addChildren([
-    managerIndexRoute,
+    managerDashboardRoute,
     managerTeamRoute,
     managerSchedulingRoute,
     managerTimeOffRoute,
+    managerAccountManagementRoute,
     managerTimesheetsRoute,
-    managerAccountsRoute,
   ]),
   employeeLayoutRoute.addChildren([
-    employeeIndexRoute,
+    employeeDashboardRoute,
     employeeScheduleRoute,
-    employeeTimesheetRoute,
     employeeTimeOffRoute,
+    employeeTimesheetRoute,
   ]),
   supervisorLayoutRoute.addChildren([
-    supervisorIndexRoute,
     supervisorDashboardRoute,
-    supervisorSchedulesRoute,
+    supervisorScheduleRoute,
     supervisorTimeOffRoute,
   ]),
-  catchAllRoute,
 ]);
 
-const router = createRouter({ routeTree });
+const router = createRouter({
+  routeTree,
+  defaultErrorComponent: ({ error }) => (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center max-w-md mx-auto p-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Page Error</h1>
+        <p className="text-muted-foreground mb-4">
+          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+        </p>
+        <button
+          onClick={() => (window.location.href = '/')}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+        >
+          Go to Login
+        </button>
+      </div>
+    </div>
+  ),
+  defaultNotFoundComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center max-w-md mx-auto p-8">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Page Not Found</h1>
+        <p className="text-muted-foreground mb-4">The page you are looking for does not exist.</p>
+        <button
+          onClick={() => (window.location.href = '/')}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+        >
+          Go to Login
+        </button>
+      </div>
+    </div>
+  ),
+});
 
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router;
-  }
+function App() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <Toaster richColors position="top-right" />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
 }
 
-export default function App() {
-  return <RouterProvider router={router} />;
-}
+export default App;

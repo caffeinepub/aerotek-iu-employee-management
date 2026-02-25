@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+export type SessionRole = 'hrAdmin' | 'manager' | 'employee' | 'supervisor';
 
 export interface Session {
   username: string;
-  displayName: string;
-  role: 'hrAdmin' | 'manager' | 'employee' | 'supervisor';
+  role: SessionRole;
   employeeId?: string;
 }
 
@@ -12,57 +13,99 @@ interface AuthContextType {
   setSession: (session: Session | null) => void;
   logout: () => void;
   isHrAdmin: boolean;
+  isHRAdmin: boolean;
   isManager: boolean;
   isEmployee: boolean;
   isSupervisor: boolean;
+  isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const SESSION_KEY = 'aerotek_session';
 
-const SESSION_KEY = 'auth_session';
-
-function loadSession(): Session | null {
+export function getStoredSession(): Session | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as Session;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && parsed.username && parsed.role) {
+      return parsed as Session;
+    }
+    return null;
   } catch {
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      // ignore
+    }
     return null;
   }
 }
 
-export function getStoredSession(): Session | null {
-  return loadSession();
-}
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  setSession: () => {},
+  logout: () => {},
+  isHrAdmin: false,
+  isHRAdmin: false,
+  isManager: false,
+  isEmployee: false,
+  isSupervisor: false,
+  isAuthenticated: false,
+});
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSessionState] = useState<Session | null>(() => loadSession());
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSessionState] = useState<Session | null>(() => {
+    return getStoredSession();
+  });
 
-  const setSession = (s: Session | null) => {
-    if (s) {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    } else {
-      sessionStorage.removeItem(SESSION_KEY);
+  const setSession = (newSession: Session | null) => {
+    setSessionState(newSession);
+    try {
+      if (newSession) {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+      } else {
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+    } catch {
+      // Storage quota exceeded or unavailable — continue without persisting
     }
-    setSessionState(s);
   };
 
   const logout = () => setSession(null);
 
   const isHrAdmin = session?.role === 'hrAdmin';
+  const isHRAdmin = isHrAdmin;
   const isManager = session?.role === 'manager';
   const isEmployee = session?.role === 'employee';
   const isSupervisor = session?.role === 'supervisor';
+  const isAuthenticated = session !== null;
 
   return (
-    <AuthContext.Provider value={{ session, setSession, logout, isHrAdmin, isManager, isEmployee, isSupervisor }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        setSession,
+        logout,
+        isHrAdmin,
+        isHRAdmin,
+        isManager,
+        isEmployee,
+        isSupervisor,
+        isAuthenticated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuthContext() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuthContext must be used within AuthProvider');
-  return ctx;
+export function useAuth() {
+  return useContext(AuthContext);
 }
+
+// Alias for backward compatibility with existing components
+export function useAuthContext() {
+  return useContext(AuthContext);
+}
+
+export default AuthContext;

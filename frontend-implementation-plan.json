@@ -1,134 +1,108 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Timesheet Management with Two-Stage Approval Workflow + Published Schedule Visibility",
+  "title": "Fix 'Something Went Wrong' startup crash",
   "requirements": [
     {
-      "id": "REQ-62",
-      "summary": "Add React Query hooks for timesheet CRUD operations",
+      "id": "REQ-77",
+      "summary": "Fix frontend application startup crash that displays 'Something went wrong' error on initial load",
       "acceptanceCriteria": [
-        "`useTimesheets` fetches data and returns loading/error/data states",
-        "`useSubmitTimesheet` resolves on #ok and rejects on #err",
-        "`useManagerReviewTimesheet` and `useHrReviewTimesheet` resolve on #ok and reject on #err",
-        "All mutations invalidate the timesheets query cache on success"
+        "The application loads to the login page without showing any 'Something went wrong' error screen.",
+        "No unhandled exceptions are thrown during the React tree mount sequence.",
+        "sessionStorage read/write operations are wrapped in try/catch so malformed or missing data does not crash the app.",
+        "All route component imports in App.tsx resolve successfully — no missing or incorrectly referenced page components.",
+        "The actor initialization in useActor.ts completes without throwing on first load.",
+        "React Query's QueryClient is configured without errors and the QueryClientProvider wraps the app correctly.",
+        "If an error boundary catches a downstream error, it displays a graceful fallback rather than a blank screen."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/contexts/AuthContext.tsx",
           "operation": "modify",
-          "description": "Add four new React Query hooks: `useTimesheets` (query hook that fetches all timesheets visible to the current user via actor.getTimesheets), `useSubmitTimesheet` (mutation hook calling actor.submitTimesheet, mapping ServiceResult_1 #ok to resolve and #err to reject, invalidating 'timesheets' query on success), `useManagerReviewTimesheet` (mutation hook calling actor.managerReviewTimesheet with id, approved boolean, and comment, mapping ServiceResult_1, invalidating 'timesheets' on success), and `useHrReviewTimesheet` (mutation hook calling actor.hrReviewTimesheet with id, approved boolean, and comment, mapping ServiceResult_1, invalidating 'timesheets' on success). Use the backend interface types Timesheet and TimesheetStatus from backend.d.ts."
-        }
-      ]
-    },
-    {
-      "id": "REQ-63",
-      "summary": "Create employee timesheet entry and submission page",
-      "acceptanceCriteria": [
-        "Page renders a weekly timesheet entry grid with start/end time inputs per day",
-        "Hours auto-calculate per row and total is shown",
-        "Submit calls useSubmitTimesheet and shows a success toast",
-        "Validation blocks submission if any active row is missing start or end time",
-        "Previously submitted timesheets are listed with correct status badges",
-        "Page matches the existing dark navy/amber visual theme"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-          "operation": "create",
-          "description": "Create a new page component that displays a weekly timesheet entry form for employees. Include a week selector (defaulting to current week) using date utilities from lib/utils.ts. Render a table with seven rows (Monday–Sunday) showing date, start time input (type='time'), end time input (type='time'), and a read-only hours column that auto-calculates (endTime - startTime). Display a running total hours sum below the table. Add a 'Submit Timesheet' button that validates all filled rows have both start and end times, then calls useSubmitTimesheet with a Timesheet object (generate id via generateId, get employeeId from session context, map entries array, calculate totalHours, set status to 'submitted', set submittedAt to Date.now() * 1_000_000n). Show a toast on success using the Toaster from App.tsx. Below the form, render a list of the employee's previously submitted timesheets fetched via useTimesheets, displaying each with date range, total hours, and a StatusBadge component showing the current status (map TimesheetStatus enum values to readable labels: submitted='Pending Manager Review', managerApproved='Pending HR Review', managerDenied='Denied by Manager', hrApproved='Approved', hrDenied='Denied by HR'). Use the navy/amber color palette from tailwind.config.js and match the styling patterns in EmployeeDashboard.tsx."
-        }
-      ]
-    },
-    {
-      "id": "REQ-64",
-      "summary": "Create manager timesheet review page with two-stage approval",
-      "acceptanceCriteria": [
-        "Pending timesheets (status #submitted) appear in the 'Pending Your Review' section",
-        "Approve action calls useManagerReviewTimesheet with approved=true",
-        "Deny action requires a comment and calls useManagerReviewTimesheet with approved=false",
-        "Success toast appears on approval or denial",
-        "Reviewed timesheets appear in the second section with status badges and comments",
-        "Page matches the existing dark navy/amber visual theme"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
-          "operation": "create",
-          "description": "Create a new page component for managers to review team timesheets. Fetch all timesheets via useTimesheets and filter them: 'Pending Your Review' section shows timesheets with status='submitted', 'Reviewed / Processed' section shows all other statuses. For each pending timesheet, display employee username, week start date, total hours, and two action buttons: 'Approve' (calls useManagerReviewTimesheet with approved=true and an empty comment string) and 'Deny' (opens an inline modal or dialog requiring a denial comment input, then calls useManagerReviewTimesheet with approved=false and the comment). Show a toast notification on mutation success or error. For reviewed timesheets, display employee username, week date, total hours, current status badge using StatusBadge component, and managerComment if present. Use the navy/amber theme and follow the layout patterns from ManagerTimeOffPage.tsx for modal and action button styling."
-        }
-      ]
-    },
-    {
-      "id": "REQ-65",
-      "summary": "Create HR Admin final timesheet approval page",
-      "acceptanceCriteria": [
-        "Manager-approved timesheets (status #managerApproved) appear in the 'Pending Final HR Approval' section",
-        "Final Approve calls useHrReviewTimesheet with approved=true",
-        "Final Deny requires an HR comment and calls useHrReviewTimesheet with approved=false",
-        "Success toast appears on final approval or denial",
-        "All Timesheets section shows all records with search and status filter",
-        "Page matches the existing dark navy/amber visual theme"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/hr/HRTimesheetPage.tsx",
-          "operation": "create",
-          "description": "Create a new page component for HR Admin to perform final approval on timesheets. Fetch all timesheets via useTimesheets. Render two sections: 'Pending Final HR Approval' (filter timesheets where status='managerApproved', show employee username, week date, total hours, managerComment, and two action buttons 'Final Approve' and 'Final Deny'), and 'All Timesheets' (display all timesheet records with a search input filtering by employee name and a status dropdown filter). For 'Final Approve', call useHrReviewTimesheet with approved=true and an empty comment. For 'Final Deny', open an inline modal requiring an HR denial comment, then call useHrReviewTimesheet with approved=false and the comment. Show a toast on mutation success or error. In the All Timesheets section, render a table with columns for employee, week date, total hours, status badge (using StatusBadge component), manager comment, and HR comment. Use the navy/amber theme and follow the layout patterns from TimeOffRequestsPage.tsx for search/filter controls and table styling."
-        }
-      ]
-    },
-    {
-      "id": "REQ-66",
-      "summary": "Wire timesheet pages into role-based navigation and routing",
-      "acceptanceCriteria": [
-        "HR Admin sidebar shows a 'Timesheets' link that navigates to /hr/timesheets and renders HRTimesheetPage",
-        "Manager sidebar shows a 'Timesheets' link that navigates to /manager/timesheets and renders ManagerTimesheetPage",
-        "Employee sidebar shows a 'Timesheet' link that navigates to /employee/timesheet and renders EmployeeTimesheetPage",
-        "All three routes are protected by their respective role guards"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/layouts/HRAdminLayout.tsx",
-          "operation": "modify",
-          "description": "Add a new navigation link in the sidebar menu array with label 'Timesheets', icon (use ClipboardList from lucide-react or similar), and path '/hr/timesheets'. Insert it after the 'Time Off Requests' link to maintain logical grouping."
+          "description": "Wrap sessionStorage.getItem and JSON.parse calls in the getStoredSession function with a try-catch block to prevent crashes from malformed or missing session data. Return null on any error instead of throwing. Ensure setSession also wraps sessionStorage.setItem in try-catch to handle quota exceeded or other storage errors gracefully."
         },
         {
-          "path": "frontend/src/layouts/ManagerLayout.tsx",
+          "path": "frontend/src/hooks/useActor.ts",
           "operation": "modify",
-          "description": "Add a new navigation link in the sidebar menu array with label 'Timesheets', icon (use ClipboardList from lucide-react or similar), and path '/manager/timesheets'. Insert it after the 'Time Off' link to maintain logical grouping."
-        },
-        {
-          "path": "frontend/src/layouts/EmployeeLayout.tsx",
-          "operation": "modify",
-          "description": "Add a new navigation link in the sidebar menu array with label 'Timesheet', icon (use ClipboardList from lucide-react or similar), and path '/employee/timesheet'. Insert it after the 'My Schedule' link to maintain logical grouping."
+          "description": "Add error handling around actor creation and initialization to prevent unhandled promise rejections during mount. Wrap the actor creation logic in try-catch and set a stable error state instead of throwing. Ensure the hook returns a consistent actor reference (null on error) to prevent downstream null reference errors. Add defensive checks before calling actor methods in the initialization effect."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Register three new routes in the TanStack Router configuration: (1) In the HR Admin route tree, add a route with path '/hr/timesheets' that lazy-loads HRTimesheetPage and applies the hrAdminGuard. (2) In the Manager route tree, add a route with path '/manager/timesheets' that lazy-loads ManagerTimesheetPage and applies the managerGuard. (3) In the Employee route tree, add a route with path '/employee/timesheet' that lazy-loads EmployeeTimesheetPage and applies the employeeGuard. Follow the existing route registration patterns in the file."
+          "description": "Add a top-level React ErrorBoundary component that wraps the entire RouterProvider to catch any unhandled errors during routing or component mount. The error boundary should display a user-friendly fallback UI with a 'Reload' button instead of crashing to a blank screen. Verify all lazy-loaded route component imports are correctly referenced and do not have missing or renamed files. Add error handling to the beforeLoad redirect logic to prevent crashes from invalid session states."
+        },
+        {
+          "path": "frontend/src/main.tsx",
+          "operation": "modify",
+          "description": "Wrap the root React.render call in a try-catch block to log any top-level mount errors to the console before the error boundary can catch them. Ensure QueryClientProvider and InternetIdentityProvider are correctly configured with no null or undefined props that could cause initialization errors."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add defensive null checks on the actor reference in all query and mutation functions. If actor is null or undefined, return a stable rejected promise with a descriptive error message instead of attempting to call methods on null. This prevents 'Cannot read property of null' errors during initial render before the actor is ready."
+        },
+        {
+          "path": "frontend/src/pages/LoginPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the LoginPage component does not throw errors during mount if sessionStorage or actor is unavailable. Add try-catch around any code that reads from sessionStorage or initializes the badge scanner. If the BarcodeDetector API is not supported, gracefully fall back to manual badge entry without crashing."
+        },
+        {
+          "path": "frontend/src/components/ErrorBoundary.tsx",
+          "operation": "create",
+          "description": "Create a reusable ErrorBoundary component that catches React errors, logs them, and displays a fallback UI with an error message and a 'Reload Page' button. Export this component for use in App.tsx."
         }
       ]
     },
     {
-      "id": "REQ-67",
-      "summary": "Ensure published shifts are immediately visible to employees without page reload",
+      "id": "REQ-78",
+      "summary": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash",
       "acceptanceCriteria": [
-        "EmployeeSchedulePage.tsx fetches only published shifts (status #published)",
-        "The shifts query has staleTime: 0 or refetchInterval set so data is always fresh on mount",
-        "After a manager or HR Admin publishes a schedule, an employee navigating to their schedule page sees the new shifts",
-        "Draft shifts (status #draft) are NOT visible to employees on the schedule page or dashboard",
-        "EmployeeDashboard.tsx upcoming shifts section also only shows published shifts"
+        "The frontend TypeScript compilation completes with zero errors.",
+        "All page components that reference `directManagerId` or `scheduleStatus` fields compile without type errors.",
+        "All timesheet page components correctly type the data returned from the `useTimesheets` query.",
+        "No implicit `any` types or undefined variable references remain in any page, hook, or context file.",
+        "The Vite build process completes successfully and produces a deployable bundle."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/employee/EmployeeSchedulePage.tsx",
+          "path": "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
           "operation": "modify",
-          "description": "Modify the useShifts or equivalent query hook call to include query options with staleTime: 0 so the data is refetched on every component mount. Ensure the query filters shifts to only include those with status='published'. If the existing query does not filter by status, add client-side filtering in the component to exclude shifts where status is 'draft'. This ensures employees only see published shifts and the data is always fresh when they navigate to the page after a schedule publish action."
+          "description": "Fix TypeScript type errors related to Timesheet data structure. Ensure the Timesheet type imported from backend.d.ts matches the data shape returned by useTimesheets query. Update all references to timesheet.entries to correctly type TimesheetEntry fields (date, startTime, endTime, hoursWorked). Remove any incorrect optional chaining or type assertions that conflict with the backend interface definition."
         },
         {
-          "path": "frontend/src/pages/employee/EmployeeDashboard.tsx",
+          "path": "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
           "operation": "modify",
-          "description": "Modify the shifts query (or upcoming shifts logic) to include query options with staleTime: 0 and filter the fetched shifts to only display those with status='published'. Ensure draft shifts are excluded from the upcoming shifts section. This guarantees that the employee dashboard reflects only published schedules and is always up-to-date when the employee accesses it."
+          "description": "Fix TypeScript type errors related to Timesheet data structure in the manager review flow. Ensure the component correctly types the timesheets array from useTimesheets query and all timesheet properties (status, employeeId, entries, managerComment, hrComment). Update any type guards or conditional logic to align with the TimesheetStatus enum from backend.d.ts."
+        },
+        {
+          "path": "frontend/src/pages/hr/HRTimesheetPage.tsx",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors related to Timesheet data structure in the HR review flow. Ensure the component correctly types the timesheets array and all status filtering logic aligns with the TimesheetStatus enum. Update the approval/denial handlers to correctly type the hrComment field as optional string per the backend interface."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors in all query and mutation hooks. Ensure the return types of all backend actor method calls match the types defined in backend.d.ts. Fix any type mismatches on Employee.directManagerId (should be optional string), Shift.scheduleStatus (verify this field exists or remove references), and all Timesheet-related types. Remove any incorrect type casts or assertions that suppress real type errors."
+        },
+        {
+          "path": "frontend/src/pages/hr/EmployeeDetailPage.tsx",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors related to Employee.directManagerId field. Ensure the field is correctly typed as optional string (string | undefined) in all form inputs, state variables, and API calls. Update the manager selection dropdown to handle undefined values gracefully."
+        },
+        {
+          "path": "frontend/src/pages/hr/AddEmployeePage.tsx",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors related to Employee.directManagerId field in the employee creation form. Ensure the CreateEmployeeWithAccountInput type correctly includes directManagerId as an optional string. Update form validation and submission logic to handle undefined manager assignments without type errors."
+        },
+        {
+          "path": "frontend/src/pages/hr/SchedulingPage.tsx",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors related to Shift data structure. If the component references a scheduleStatus field that does not exist in the backend Shift type, remove those references or map them to the correct status field. Ensure all shift operations (create, update, delete) use the correct Shift type from backend.d.ts."
+        },
+        {
+          "path": "frontend/src/pages/manager/ManagerSchedulingPage.tsx",
+          "operation": "modify",
+          "description": "Fix TypeScript type errors related to Shift data structure. Verify all shift property references match the backend Shift interface (id, employeeId, department, date, startTime, endTime, status). Remove any references to fields not defined in backend.d.ts. Ensure the ShiftStatus enum is used correctly for status filtering and display."
         }
       ]
     }

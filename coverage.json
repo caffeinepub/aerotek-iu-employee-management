@@ -1,117 +1,81 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T13:37:45.111Z",
+  "generatedAt": "2026-02-24T15:41:25.893Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 6,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-61",
-        "summary": "Add a `Timesheet` data type and stable map to `backend/main.mo`. A Timesheet record must include: id (Text), employeeId (Text), employeeUsername (Text), entries (array of { date: Text, startTime: Text, endTime: Text, hoursWorked: Float }), totalHours (Float), status (variant: #submitted | #managerApproved | #managerDenied | #hrApproved | #hrDenied), submittedAt (Int nanoseconds), managerComment (optional Text), hrComment (optional Text), weekStartDate (Text). Add backend endpoints: `submitTimesheet` (employee only — creates a new timesheet record with status #submitted), `getTimesheets` (returns all timesheets; HR Admin sees all, Manager sees their team's, Employee sees only their own), `managerReviewTimesheet` (Manager or HR Admin — approves or denies a #submitted timesheet, sets status to #managerApproved or #managerDenied, stores managerComment), `hrReviewTimesheet` (HR Admin only — approves or denies a #managerApproved timesheet, sets status to #hrApproved or #hrDenied, stores hrComment). Only HR Admin and Manager callers may call the review endpoints. Return `#ok` or `#err` with descriptive messages.",
+        "id": "REQ-76",
+        "summary": "Audit and fix the Motoko backend (`backend/main.mo`) for any runtime initialization errors that cause the canister to trap or fail on startup. Ensure all stable variable declarations are valid, all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet) are consistent and non-conflicting, all pre-seeded data (accounts for 'richaadi0' and 'Adirich') is initialized without errors, and all post-upgrade hooks execute without trapping. The backend must deploy and initialize cleanly without any runtime errors.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-62",
-        "summary": "In `frontend/src/hooks/useQueries.ts`, add React Query hooks for the timesheet feature: `useTimesheets` (query — fetches all timesheets visible to the current user), `useSubmitTimesheet` (mutation — calls `submitTimesheet` backend endpoint, maps #ok/#err to resolved/rejected), `useManagerReviewTimesheet` (mutation — calls `managerReviewTimesheet`, maps #ok/#err), `useHrReviewTimesheet` (mutation — calls `hrReviewTimesheet`, maps #ok/#err). On success of any mutation, invalidate the timesheets query cache.",
+        "id": "REQ-77",
+        "summary": "Audit and fix the frontend application startup crash that displays a 'Something went wrong' error screen on initial load. Inspect `frontend/src/App.tsx`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/hooks/useActor.ts`, and `frontend/src/hooks/useQueries.ts` for any errors that occur during mount — including errors reading from sessionStorage, null/undefined actor access before initialization, broken route component imports, missing lazy-loaded page components, or QueryClient configuration errors. Add error boundaries where needed. The app must load to the login page without any crash screen on first visit.",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/contexts/AuthContext.tsx",
+          "frontend/src/hooks/useActor.ts",
+          "frontend/src/App.tsx",
+          "frontend/src/main.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/components/ErrorBoundary.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/contexts/AuthContext.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/LoginPage.tsx",
+          "frontend/src/components/ErrorBoundary.tsx"
+        ]
+      },
+      {
+        "id": "REQ-78",
+        "summary": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+          "frontend/src/pages/hr/HRTimesheetPage.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/hr/EmployeeDetailPage.tsx",
+          "frontend/src/pages/hr/AddEmployeePage.tsx",
+          "frontend/src/pages/hr/SchedulingPage.tsx",
+          "frontend/src/pages/manager/ManagerSchedulingPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+          "frontend/src/pages/hr/HRTimesheetPage.tsx",
           "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-63",
-        "summary": "Create `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`. This page allows employees to build and submit a weekly timesheet. The UI must include: a week selector (defaults to current week), a table with one row per day of the selected week (Monday–Sunday) showing date, start time input, end time input, and auto-calculated hours, a running total hours display, a 'Submit Timesheet' button that calls `useSubmitTimesheet`, inline validation errors if start/end times are missing for any filled row, a toast notification on successful submission, and a section below the form listing the employee's previously submitted timesheets with their status badges (#submitted = 'Pending Manager Review', #managerApproved = 'Pending HR Review', #managerDenied = 'Denied by Manager', #hrApproved = 'Approved', #hrDenied = 'Denied by HR'). Match the dark navy/amber visual theme.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-64",
-        "summary": "Create `frontend/src/pages/manager/ManagerTimesheetPage.tsx`. This page shows the manager a list of all timesheets submitted by their team members, split into two sections: 'Pending Your Review' (status = #submitted) and 'Reviewed / Processed' (all other statuses). For each pending timesheet, show employee name, week date range, total hours, and Approve/Deny action buttons. Clicking Approve calls `useManagerReviewTimesheet` with approved=true and an optional comment. Clicking Deny opens a small inline modal requiring a denial comment, then calls `useManagerReviewTimesheet` with approved=false and the comment. Show a toast on success or error. Reviewed timesheets show their current status badge and any comments. Match the dark navy/amber visual theme.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/manager/ManagerTimesheetPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/manager/ManagerTimesheetPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-65",
-        "summary": "Create `frontend/src/pages/hr/HRTimesheetPage.tsx`. This page shows HR Admin all timesheets that have been manager-approved (status = #managerApproved) in a 'Pending Final HR Approval' section, and all other processed timesheets (all statuses) in an 'All Timesheets' section with filtering by status and employee name search. For each manager-approved timesheet, show employee name, week date range, total hours, manager comment, and Final Approve/Final Deny action buttons. Clicking Final Approve calls `useHrReviewTimesheet` with approved=true. Clicking Final Deny opens an inline modal requiring an HR comment, then calls `useHrReviewTimesheet` with approved=false. Show a toast on success or error. Match the dark navy/amber visual theme.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/hr/HRTimesheetPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/hr/HRTimesheetPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-66",
-        "summary": "Add a 'Timesheets' navigation link to the HR Admin sidebar in `frontend/src/layouts/HRAdminLayout.tsx` pointing to `/hr/timesheets`. Register the route in `frontend/src/App.tsx` under the HR Admin route tree, mapping `/hr/timesheets` to `HRTimesheetPage`. Add a 'Timesheets' navigation link to the Manager sidebar in `frontend/src/layouts/ManagerLayout.tsx` pointing to `/manager/timesheets`. Register the route in `frontend/src/App.tsx` under the Manager route tree, mapping `/manager/timesheets` to `ManagerTimesheetPage`. Add a 'Timesheet' navigation link to the Employee sidebar in `frontend/src/layouts/EmployeeLayout.tsx` pointing to `/employee/timesheet`. Register the route in `frontend/src/App.tsx` under the Employee route tree, mapping `/employee/timesheet` to `EmployeeTimesheetPage`.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/layouts/HRAdminLayout.tsx",
-          "frontend/src/layouts/ManagerLayout.tsx",
-          "frontend/src/layouts/EmployeeLayout.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/layouts/HRAdminLayout.tsx",
-          "frontend/src/layouts/ManagerLayout.tsx",
-          "frontend/src/layouts/EmployeeLayout.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-67",
-        "summary": "Ensure that when a schedule is published (shift status transitions from #draft to #published via `publishSchedule`), the employee's schedule page (`frontend/src/pages/employee/EmployeeSchedulePage.tsx`) and employee dashboard (`frontend/src/pages/employee/EmployeeDashboard.tsx`) immediately reflect the newly published shifts without requiring a page reload. The `useShifts` or equivalent query used in those pages must refetch published shifts automatically — either via a short polling interval (e.g., every 30 seconds) or by ensuring the React Query stale time is set to 0 so the data is always considered stale and refetched on mount. Published shifts must be visible to employees the moment they navigate to their schedule page after a publish action.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/employee/EmployeeSchedulePage.tsx",
-          "frontend/src/pages/employee/EmployeeDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/employee/EmployeeSchedulePage.tsx",
-          "frontend/src/pages/employee/EmployeeDashboard.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/components/ErrorBoundary.tsx",
+    "frontend/src/contexts/AuthContext.tsx",
+    "frontend/src/hooks/useAuth.ts",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/layouts/EmployeeLayout.tsx",
-    "frontend/src/layouts/HRAdminLayout.tsx",
-    "frontend/src/layouts/ManagerLayout.tsx",
-    "frontend/src/pages/employee/EmployeeDashboard.tsx",
-    "frontend/src/pages/employee/EmployeeSchedulePage.tsx",
+    "frontend/src/layouts/SupervisorLayout.tsx",
+    "frontend/src/pages/LoginPage.tsx",
     "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-    "frontend/src/pages/hr/AddEmployeePage.tsx",
     "frontend/src/pages/hr/HRTimesheetPage.tsx",
     "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
     "project_state.json",

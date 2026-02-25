@@ -2,10 +2,14 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-frontend-src-hooks-usequeries-ts-add-react-query-hooks-for-the-timesheet-feature-usetimesheets-query-fetches-all-timesheets-visible-to-the-current-user-usesubmittimesheet-mutation-calls-submittimesheet-backend-endpoint-maps-ok-err-to-resolved-rejected-usemanagerreviewtimesheet-mutation-calls-managerreviewtimesheet-maps-ok-err-usehrreviewtimesheet-mutation-calls-hrreviewtimesheet-maps-ok-err-on-success-of-any-mutation-invalidate-the-timesheets-query-cache",
-      "featureTitle": "In `frontend/src/hooks/useQueries.ts`, add React Query hooks for the timesheet feature: `useTimesheets` (query — fetches all timesheets visible to the current user), `useSubmitTimesheet` (mutation — calls `submitTimesheet` backend endpoint, maps #ok/#err to resolved/rejected), `useManagerReviewTimesheet` (mutation — calls `managerReviewTimesheet`, maps #ok/#err), `useHrReviewTimesheet` (mutation — calls `hrReviewTimesheet`, maps #ok/#err). On success of any mutation, invalidate the timesheets query cache.",
+      "featureId": "feature-audit-and-fix-the-frontend-application-startup-crash-that-displays-a-something-went-wrong-error-screen-on-initial-load-inspect-frontend-src-app-tsx-frontend-src-contexts-authcontext-tsx-frontend-src-hooks-useactor-ts-and-frontend-src-hooks-usequeries-ts-for-any-errors-that-occur-during-mount-including-errors-reading-from-sessionstorage-null-undefined-actor-access-before-initialization-broken-route-component-imports-missing-lazy-loaded-page-components-or-queryclient-configuration-errors-add-error-boundaries-where-needed-the-app-must-load-to-the-login-page-without-any-crash-screen-on-first-visit",
+      "featureTitle": "Audit and fix the frontend application startup crash that displays a 'Something went wrong' error screen on initial load. Inspect `frontend/src/App.tsx`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/hooks/useActor.ts`, and `frontend/src/hooks/useQueries.ts` for any errors that occur during mount — including errors reading from sessionStorage, null/undefined actor access before initialization, broken route component imports, missing lazy-loaded page components, or QueryClient configuration errors. Add error boundaries where needed. The app must load to the login page without any crash screen on first visit.",
       "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/App.tsx",
+        "frontend/src/components/ErrorBoundary.tsx",
+        "frontend/src/contexts/AuthContext.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/LoginPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,35 +22,17 @@
         "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-62"
+        "REQ-77"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-create-frontend-src-pages-employee-employeetimesheetpage-tsx-this-page-allows-employees-to-build-and-submit-a-weekly-timesheet-the-ui-must-include-a-week-selector-defaults-to-current-week-a-table-with-one-row-per-day-of-the-selected-week-monday-sunday-showing-date-start-time-input-end-time-input-and-auto-calculated-hours-a-running-total-hours-display-a-submit-timesheet-button-that-calls-usesubmittimesheet-inline-validation-errors-if-start-end-times-are-missing-for-any-filled-row-a-toast-notification-on-successful-submission-and-a-section-below-the-form-listing-the-employee-s-previously-submitted-timesheets-with-their-status-badges-submitted-pending-manager-review-managerapproved-pending-hr-review-managerdenied-denied-by-manager-hrapproved-approved-hrdenied-denied-by-hr-match-the-dark-navy-amber-visual-theme",
-      "featureTitle": "Create `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`. This page allows employees to build and submit a weekly timesheet. The UI must include: a week selector (defaults to current week), a table with one row per day of the selected week (Monday–Sunday) showing date, start time input, end time input, and auto-calculated hours, a running total hours display, a 'Submit Timesheet' button that calls `useSubmitTimesheet`, inline validation errors if start/end times are missing for any filled row, a toast notification on successful submission, and a section below the form listing the employee's previously submitted timesheets with their status badges (#submitted = 'Pending Manager Review', #managerApproved = 'Pending HR Review', #managerDenied = 'Denied by Manager', #hrApproved = 'Approved', #hrDenied = 'Denied by HR'). Match the dark navy/amber visual theme.",
+      "featureId": "feature-fix-all-typescript-compilation-errors-across-the-frontend-that-may-be-causing-the-startup-crash-resolve-type-mismatches-on-the-directmanagerid-field-employee-type-schedulestatus-field-shift-type-and-all-timesheet-related-types-across-usequeries-ts-employeetimesheetpage-tsx-managertimesheetpage-tsx-hrtimesheetpage-tsx-scheduling-pages-and-employee-management-pages-ensure-the-project-builds-without-typescript-errors-or-warnings-that-would-prevent-successful-deployment",
+      "featureTitle": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
       "files": [
-        "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "camera@1.0.0",
-        "qr-code@1.0.0"
-      ],
-      "testIds": [
-        "REQ-63"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-frontend-src-pages-manager-managertimesheetpage-tsx-this-page-shows-the-manager-a-list-of-all-timesheets-submitted-by-their-team-members-split-into-two-sections-pending-your-review-status-submitted-and-reviewed-processed-all-other-statuses-for-each-pending-timesheet-show-employee-name-week-date-range-total-hours-and-approve-deny-action-buttons-clicking-approve-calls-usemanagerreviewtimesheet-with-approved-true-and-an-optional-comment-clicking-deny-opens-a-small-inline-modal-requiring-a-denial-comment-then-calls-usemanagerreviewtimesheet-with-approved-false-and-the-comment-show-a-toast-on-success-or-error-reviewed-timesheets-show-their-current-status-badge-and-any-comments-match-the-dark-navy-amber-visual-theme",
-      "featureTitle": "Create `frontend/src/pages/manager/ManagerTimesheetPage.tsx`. This page shows the manager a list of all timesheets submitted by their team members, split into two sections: 'Pending Your Review' (status = #submitted) and 'Reviewed / Processed' (all other statuses). For each pending timesheet, show employee name, week date range, total hours, and Approve/Deny action buttons. Clicking Approve calls `useManagerReviewTimesheet` with approved=true and an optional comment. Clicking Deny opens a small inline modal requiring a denial comment, then calls `useManagerReviewTimesheet` with approved=false and the comment. Show a toast on success or error. Reviewed timesheets show their current status badge and any comments. Match the dark navy/amber visual theme.",
-      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+        "frontend/src/pages/hr/HRTimesheetPage.tsx",
         "frontend/src/pages/manager/ManagerTimesheetPage.tsx"
       ],
       "components": [
@@ -60,74 +46,7 @@
         "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-64"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-frontend-src-pages-hr-hrtimesheetpage-tsx-this-page-shows-hr-admin-all-timesheets-that-have-been-manager-approved-status-managerapproved-in-a-pending-final-hr-approval-section-and-all-other-processed-timesheets-all-statuses-in-an-all-timesheets-section-with-filtering-by-status-and-employee-name-search-for-each-manager-approved-timesheet-show-employee-name-week-date-range-total-hours-manager-comment-and-final-approve-final-deny-action-buttons-clicking-final-approve-calls-usehrreviewtimesheet-with-approved-true-clicking-final-deny-opens-an-inline-modal-requiring-an-hr-comment-then-calls-usehrreviewtimesheet-with-approved-false-show-a-toast-on-success-or-error-match-the-dark-navy-amber-visual-theme",
-      "featureTitle": "Create `frontend/src/pages/hr/HRTimesheetPage.tsx`. This page shows HR Admin all timesheets that have been manager-approved (status = #managerApproved) in a 'Pending Final HR Approval' section, and all other processed timesheets (all statuses) in an 'All Timesheets' section with filtering by status and employee name search. For each manager-approved timesheet, show employee name, week date range, total hours, manager comment, and Final Approve/Final Deny action buttons. Clicking Final Approve calls `useHrReviewTimesheet` with approved=true. Clicking Final Deny opens an inline modal requiring an HR comment, then calls `useHrReviewTimesheet` with approved=false. Show a toast on success or error. Match the dark navy/amber visual theme.",
-      "files": [
-        "frontend/src/pages/hr/HRTimesheetPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "camera@1.0.0",
-        "qr-code@1.0.0"
-      ],
-      "testIds": [
-        "REQ-65"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-timesheets-navigation-link-to-the-hr-admin-sidebar-in-frontend-src-layouts-hradminlayout-tsx-pointing-to-hr-timesheets-register-the-route-in-frontend-src-app-tsx-under-the-hr-admin-route-tree-mapping-hr-timesheets-to-hrtimesheetpage-add-a-timesheets-navigation-link-to-the-manager-sidebar-in-frontend-src-layouts-managerlayout-tsx-pointing-to-manager-timesheets-register-the-route-in-frontend-src-app-tsx-under-the-manager-route-tree-mapping-manager-timesheets-to-managertimesheetpage-add-a-timesheet-navigation-link-to-the-employee-sidebar-in-frontend-src-layouts-employeelayout-tsx-pointing-to-employee-timesheet-register-the-route-in-frontend-src-app-tsx-under-the-employee-route-tree-mapping-employee-timesheet-to-employeetimesheetpage",
-      "featureTitle": "Add a 'Timesheets' navigation link to the HR Admin sidebar in `frontend/src/layouts/HRAdminLayout.tsx` pointing to `/hr/timesheets`. Register the route in `frontend/src/App.tsx` under the HR Admin route tree, mapping `/hr/timesheets` to `HRTimesheetPage`. Add a 'Timesheets' navigation link to the Manager sidebar in `frontend/src/layouts/ManagerLayout.tsx` pointing to `/manager/timesheets`. Register the route in `frontend/src/App.tsx` under the Manager route tree, mapping `/manager/timesheets` to `ManagerTimesheetPage`. Add a 'Timesheet' navigation link to the Employee sidebar in `frontend/src/layouts/EmployeeLayout.tsx` pointing to `/employee/timesheet`. Register the route in `frontend/src/App.tsx` under the Employee route tree, mapping `/employee/timesheet` to `EmployeeTimesheetPage`.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/layouts/EmployeeLayout.tsx",
-        "frontend/src/layouts/HRAdminLayout.tsx",
-        "frontend/src/layouts/ManagerLayout.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "camera@1.0.0",
-        "qr-code@1.0.0"
-      ],
-      "testIds": [
-        "REQ-66"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-that-when-a-schedule-is-published-shift-status-transitions-from-draft-to-published-via-publishschedule-the-employee-s-schedule-page-frontend-src-pages-employee-employeeschedulepage-tsx-and-employee-dashboard-frontend-src-pages-employee-employeedashboard-tsx-immediately-reflect-the-newly-published-shifts-without-requiring-a-page-reload-the-useshifts-or-equivalent-query-used-in-those-pages-must-refetch-published-shifts-automatically-either-via-a-short-polling-interval-e-g-every-30-seconds-or-by-ensuring-the-react-query-stale-time-is-set-to-0-so-the-data-is-always-considered-stale-and-refetched-on-mount-published-shifts-must-be-visible-to-employees-the-moment-they-navigate-to-their-schedule-page-after-a-publish-action",
-      "featureTitle": "Ensure that when a schedule is published (shift status transitions from #draft to #published via `publishSchedule`), the employee's schedule page (`frontend/src/pages/employee/EmployeeSchedulePage.tsx`) and employee dashboard (`frontend/src/pages/employee/EmployeeDashboard.tsx`) immediately reflect the newly published shifts without requiring a page reload. The `useShifts` or equivalent query used in those pages must refetch published shifts automatically — either via a short polling interval (e.g., every 30 seconds) or by ensuring the React Query stale time is set to 0 so the data is always considered stale and refetched on mount. Published shifts must be visible to employees the moment they navigate to their schedule page after a publish action.",
-      "files": [
-        "frontend/src/pages/employee/EmployeeDashboard.tsx",
-        "frontend/src/pages/employee/EmployeeSchedulePage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "camera@1.0.0",
-        "qr-code@1.0.0"
-      ],
-      "testIds": [
-        "REQ-67"
+        "REQ-78"
       ],
       "confidence": "high"
     }

@@ -1,63 +1,52 @@
 import React, { useState } from 'react';
-import { toast } from 'sonner';
-import { ClipboardList, CheckCircle, XCircle, Clock, User } from 'lucide-react';
 import { useTimesheets, useManagerReviewTimesheet } from '../../hooks/useQueries';
-import { TimesheetStatus } from '../../backend';
-import type { Timesheet } from '../../backend';
+import { Timesheet, TimesheetStatus } from '../../backend';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '../../components/ui/dialog';
+} from '@/components/ui/dialog';
+import { CheckCircle, XCircle, ClipboardList } from 'lucide-react';
+import { toast } from 'sonner';
 
-function getStatusLabel(status: TimesheetStatus): string {
+function getStatusBadge(status: TimesheetStatus) {
   switch (status) {
     case TimesheetStatus.submitted:
-      return 'Pending Review';
+      return <Badge variant="secondary">Submitted</Badge>;
     case TimesheetStatus.managerApproved:
-      return 'Approved by You';
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Manager Approved</Badge>;
     case TimesheetStatus.managerDenied:
-      return 'Denied by You';
+      return <Badge variant="destructive">Manager Denied</Badge>;
     case TimesheetStatus.hrApproved:
-      return 'HR Approved';
+      return <Badge className="bg-green-100 text-green-800 border-green-200">HR Approved</Badge>;
     case TimesheetStatus.hrDenied:
-      return 'HR Denied';
+      return <Badge variant="destructive">HR Denied</Badge>;
     default:
-      return 'Unknown';
-  }
-}
-
-function getStatusColor(status: TimesheetStatus): string {
-  switch (status) {
-    case TimesheetStatus.submitted:
-      return 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
-    case TimesheetStatus.managerApproved:
-      return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
-    case TimesheetStatus.managerDenied:
-      return 'bg-red-500/20 text-red-300 border border-red-500/30';
-    case TimesheetStatus.hrApproved:
-      return 'bg-green-500/20 text-green-300 border border-green-500/30';
-    case TimesheetStatus.hrDenied:
-      return 'bg-red-500/20 text-red-300 border border-red-500/30';
-    default:
-      return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
+      return <Badge variant="outline">{String(status)}</Badge>;
   }
 }
 
 export default function ManagerTimesheetPage() {
-  const { data: timesheets = [], isLoading } = useTimesheets();
+  const { data: timesheets, isLoading } = useTimesheets();
   const reviewMutation = useManagerReviewTimesheet();
 
   const [denyDialogOpen, setDenyDialogOpen] = useState(false);
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
   const [denyComment, setDenyComment] = useState('');
 
-  const pendingTimesheets = timesheets.filter(
+  const pendingTimesheets = (timesheets || []).filter(
     (ts) => ts.status === TimesheetStatus.submitted
   );
-  const reviewedTimesheets = timesheets.filter(
+
+  const reviewedTimesheets = (timesheets || []).filter(
     (ts) => ts.status !== TimesheetStatus.submitted
   );
 
@@ -66,17 +55,17 @@ export default function ManagerTimesheetPage() {
       await reviewMutation.mutateAsync({ id: ts.id, approved: true, comment: '' });
       toast.success(`Timesheet for ${ts.employeeUsername} approved.`);
     } catch (err) {
-      toast.error(`Failed to approve: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error(err instanceof Error ? err.message : 'Failed to approve timesheet');
     }
   };
 
-  const openDenyDialog = (ts: Timesheet) => {
+  const handleDenyOpen = (ts: Timesheet) => {
     setSelectedTimesheet(ts);
     setDenyComment('');
     setDenyDialogOpen(true);
   };
 
-  const handleDeny = async () => {
+  const handleDenyConfirm = async () => {
     if (!selectedTimesheet) return;
     if (!denyComment.trim()) {
       toast.error('Please provide a reason for denial.');
@@ -86,188 +75,158 @@ export default function ManagerTimesheetPage() {
       await reviewMutation.mutateAsync({
         id: selectedTimesheet.id,
         approved: false,
-        comment: denyComment.trim(),
+        comment: denyComment,
       });
-      toast.success(`Timesheet for ${selectedTimesheet.employeeUsername} denied.`);
+      toast.success('Timesheet denied.');
       setDenyDialogOpen(false);
       setSelectedTimesheet(null);
       setDenyComment('');
     } catch (err) {
-      toast.error(`Failed to deny: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error(err instanceof Error ? err.message : 'Failed to deny timesheet');
     }
   };
 
   return (
-    <div className="p-6 space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-amber-500/20">
-          <ClipboardList className="w-6 h-6 text-amber-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Timesheet Management</h1>
-          <p className="text-slate-400 text-sm">Review and approve team timesheets</p>
-        </div>
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Timesheet Review</h1>
+        <p className="text-muted-foreground text-sm mt-1">Review and approve employee timesheets</p>
       </div>
 
-      {/* Pending Review Section */}
-      <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-amber-400" />
-          Pending Your Review
+      {/* Pending Review */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <ClipboardList className="h-5 w-5" />
+          Pending Review
           {pendingTimesheets.length > 0 && (
-            <span className="ml-2 px-2 py-0.5 bg-amber-500/20 text-amber-300 text-xs rounded-full border border-amber-500/30">
-              {pendingTimesheets.length}
-            </span>
+            <Badge variant="secondary">{pendingTimesheets.length}</Badge>
           )}
         </h2>
 
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-20 bg-slate-700/50 rounded-lg animate-pulse" />
-            ))}
+            {[1, 2].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
           </div>
         ) : pendingTimesheets.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <CheckCircle className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p>No timesheets pending review.</p>
-          </div>
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No timesheets pending review.
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-3">
             {pendingTimesheets.map((ts) => (
-              <div
-                key={ts.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-700/40 rounded-lg border border-slate-600/30"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-slate-600/50">
-                    <User className="w-4 h-4 text-slate-400" />
+              <Card key={ts.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{ts.employeeUsername}</CardTitle>
+                    {getStatusBadge(ts.status)}
                   </div>
-                  <div>
-                    <p className="text-white font-medium">{ts.employeeUsername}</p>
-                    <p className="text-slate-400 text-sm">Week of {ts.weekStartDate}</p>
-                    <p className="text-amber-400 text-sm font-semibold mt-0.5">
-                      {ts.totalHours.toFixed(2)} hours
-                    </p>
+                  <p className="text-sm text-muted-foreground">Week of {ts.weekStartDate} · {ts.totalHours}h total</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1 mb-4">
+                    {ts.entries.map((entry) => (
+                      <div key={entry.date} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{entry.date}</span>
+                        <span>{entry.startTime} – {entry.endTime}</span>
+                        <span className="font-medium">{entry.hoursWorked}h</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleApprove(ts)}
-                    disabled={reviewMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => openDenyDialog(ts)}
-                    disabled={reviewMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-red-600/80 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Deny
-                  </button>
-                </div>
-              </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-destructive border-destructive hover:bg-destructive/10"
+                      onClick={() => handleDenyOpen(ts)}
+                      disabled={reviewMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Deny
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => handleApprove(ts)}
+                      disabled={reviewMutation.isPending}
+                    >
+                      {reviewMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      Approve
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
       </div>
 
-      {/* Reviewed Timesheets Section */}
-      <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-slate-400" />
-          Reviewed / Processed
-        </h2>
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-slate-700/50 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : reviewedTimesheets.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p>No reviewed timesheets yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {reviewedTimesheets
-              .slice()
-              .sort((a, b) => (a.weekStartDate > b.weekStartDate ? -1 : 1))
-              .map((ts) => (
-                <div
-                  key={ts.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-700/40 rounded-lg border border-slate-600/30"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-medium">{ts.employeeUsername}</p>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ts.status)}`}>
-                        {getStatusLabel(ts.status)}
-                      </span>
+      {/* Reviewed Timesheets */}
+      {reviewedTimesheets.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Reviewed Timesheets</h2>
+          <div className="space-y-2">
+            {reviewedTimesheets.map((ts) => (
+              <Card key={ts.id}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{ts.employeeUsername}</p>
+                      <p className="text-xs text-muted-foreground">Week of {ts.weekStartDate} · {ts.totalHours}h</p>
                     </div>
-                    <p className="text-slate-400 text-sm mt-0.5">
-                      Week of {ts.weekStartDate} · {ts.totalHours.toFixed(2)} hours
-                    </p>
-                    {ts.managerComment && (
-                      <p className="text-slate-500 text-xs mt-1">
-                        Your comment: {ts.managerComment}
-                      </p>
-                    )}
+                    {getStatusBadge(ts.status)}
                   </div>
-                </div>
-              ))}
+                  {ts.managerComment && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">"{ts.managerComment}"</p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Deny Dialog */}
       <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
-        <DialogContent className="bg-slate-800 border border-slate-700 text-white">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-white">Deny Timesheet</DialogTitle>
+            <DialogTitle>Deny Timesheet</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            {selectedTimesheet && (
-              <p className="text-slate-400 text-sm mb-4">
-                Denying timesheet for <span className="text-white font-medium">{selectedTimesheet.employeeUsername}</span> (Week of {selectedTimesheet.weekStartDate})
-              </p>
-            )}
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Reason for Denial <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={denyComment}
-              onChange={(e) => setDenyComment(e.target.value)}
-              placeholder="Please provide a reason..."
-              rows={3}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 resize-none"
-            />
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Please provide a reason for denying this timesheet.
+            </p>
+            <div>
+              <Label htmlFor="deny-comment">Reason</Label>
+              <Textarea
+                id="deny-comment"
+                value={denyComment}
+                onChange={(e) => setDenyComment(e.target.value)}
+                placeholder="Enter reason for denial..."
+                className="mt-1"
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <button
-              onClick={() => setDenyDialogOpen(false)}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-colors"
-            >
+            <Button variant="outline" onClick={() => setDenyDialogOpen(false)}>
               Cancel
-            </button>
-            <button
-              onClick={handleDeny}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDenyConfirm}
               disabled={reviewMutation.isPending || !denyComment.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
             >
               {reviewMutation.isPending ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <XCircle className="w-4 h-4" />
-              )}
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : null}
               Deny Timesheet
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

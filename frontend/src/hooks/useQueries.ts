@@ -1,31 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type {
+import {
   Employee,
   Shift,
-  TimeOffRequest,
   JobPosting,
   Applicant,
   ApplicantStage,
+  TimeOffRequest,
   PTOPolicy,
   PTOBalance,
-  UserProfile,
-  Timesheet,
   Role,
   CreateEmployeeWithAccountInput,
+  Timesheet,
+  TimesheetStatus,
+  UserProfile,
 } from '../backend';
 
 export function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const msg = error.message;
-    const rejectMatch = msg.match(/Reject text: (.+)/);
-    if (rejectMatch) return rejectMatch[1];
-    return msg;
+  if (!error) return 'An unknown error occurred';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
   }
   return String(error);
 }
 
-// ===== Employee Hooks =====
+// ===== Employee Queries =====
 
 export function useGetAllEmployees() {
   const { actor, isFetching } = useActor();
@@ -33,7 +34,12 @@ export function useGetAllEmployees() {
     queryKey: ['employees'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllEmployees();
+      try {
+        return await actor.getAllEmployees();
+      } catch (err) {
+        console.error('getAllEmployees error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -41,11 +47,16 @@ export function useGetAllEmployees() {
 
 export function useGetEmployee(id: string) {
   const { actor, isFetching } = useActor();
-  return useQuery<Employee>({
+  return useQuery<Employee | null>({
     queryKey: ['employee', id],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getEmployee(id);
+      if (!actor || !id) return null;
+      try {
+        return await actor.getEmployee(id);
+      } catch (err) {
+        console.error('getEmployee error:', err);
+        return null;
+      }
     },
     enabled: !!actor && !isFetching && !!id,
   });
@@ -57,7 +68,12 @@ export function useGetEmployeesByRole(role: Role) {
     queryKey: ['employeesByRole', role],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getEmployeesByRole(role);
+      try {
+        return await actor.getEmployeesByRole(role);
+      } catch (err) {
+        console.error('getEmployeesByRole error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -99,11 +115,10 @@ export function useUpdateEmployee() {
   return useMutation({
     mutationFn: async ({ id, profile }: { id: string; profile: Employee }) => {
       if (!actor) throw new Error('Actor not available');
-      await actor.updateEmployee(id, profile);
+      return actor.updateEmployee(id, profile);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
     },
   });
 }
@@ -114,7 +129,7 @@ export function useDeactivateEmployee() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!actor) throw new Error('Actor not available');
-      await actor.deactivateEmployee(id);
+      return actor.deactivateEmployee(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
@@ -140,131 +155,7 @@ export function useDeleteEmployee() {
   });
 }
 
-// ===== Badge Login =====
-
-export function useLoginWithBadgeId() {
-  const { actor } = useActor();
-  return useMutation({
-    mutationFn: async (badgeId: string): Promise<UserProfile> => {
-      if (!actor) throw new Error('Actor not available');
-      const result = await actor.loginWithBadgeId(badgeId);
-      if (result.__kind__ === 'err') {
-        throw new Error(result.err);
-      }
-      return result.ok as UserProfile;
-    },
-  });
-}
-
-// ===== Job Posting Queries =====
-
-export function useGetAllJobPostings() {
-  const { actor, isFetching } = useActor();
-  return useQuery<JobPosting[]>({
-    queryKey: ['jobPostings'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllJobPostings();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useCreateJobPosting() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (posting: JobPosting) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.createJobPosting(posting);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobPostings'] });
-    },
-  });
-}
-
-export function useUpdateJobPosting() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, posting }: { id: string; posting: JobPosting }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updateJobPosting(id, posting);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobPostings'] });
-    },
-  });
-}
-
-// ===== Applicant Queries =====
-
-export function useGetAllApplicants() {
-  const { actor, isFetching } = useActor();
-  return useQuery<Applicant[]>({
-    queryKey: ['applicants'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllApplicants();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetApplicantsForPosting(jobPostingId: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<Applicant[]>({
-    queryKey: ['applicants', jobPostingId],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getApplicantsForPosting(jobPostingId);
-    },
-    enabled: !!actor && !isFetching && !!jobPostingId,
-  });
-}
-
-export function useAddApplicant() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (applicant: Applicant) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addApplicant(applicant);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applicants'] });
-    },
-  });
-}
-
-export function useUpdateApplicantStage() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, stage }: { id: string; stage: ApplicantStage }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updateApplicantStage(id, stage);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['applicants'] });
-    },
-  });
-}
-
 // ===== Shift Queries =====
-
-export function useGetShiftsForDepartment(department: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<Shift[]>({
-    queryKey: ['shifts', 'department', department],
-    queryFn: async () => {
-      if (!actor || !department) return [];
-      return actor.getAllShiftsForDepartment(department);
-    },
-    enabled: !!actor && !isFetching && !!department,
-  });
-}
 
 export function useGetShiftsForEmployee(employeeId: string) {
   const { actor, isFetching } = useActor();
@@ -272,10 +163,32 @@ export function useGetShiftsForEmployee(employeeId: string) {
     queryKey: ['shifts', 'employee', employeeId],
     queryFn: async () => {
       if (!actor || !employeeId) return [];
-      return actor.getAllShiftsForEmployee(employeeId);
+      try {
+        return await actor.getAllShiftsForEmployee(employeeId);
+      } catch (err) {
+        console.error('getAllShiftsForEmployee error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && !!employeeId,
     staleTime: 0,
+  });
+}
+
+export function useGetShiftsForDepartment(department: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<Shift[]>({
+    queryKey: ['shifts', 'department', department],
+    queryFn: async () => {
+      if (!actor || !department) return [];
+      try {
+        return await actor.getAllShiftsForDepartment(department);
+      } catch (err) {
+        console.error('getAllShiftsForDepartment error:', err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching && !!department,
   });
 }
 
@@ -317,7 +230,7 @@ export function usePublishSchedule() {
       if (result.__kind__ === 'err') {
         throw new Error(result.err);
       }
-      return result.ok;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
@@ -335,10 +248,138 @@ export function useUnpublishSchedule() {
       if (result.__kind__ === 'err') {
         throw new Error(result.err);
       }
-      return result.ok;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+}
+
+// ===== Job Posting Queries =====
+
+export function useGetAllJobPostings() {
+  const { actor, isFetching } = useActor();
+  return useQuery<JobPosting[]>({
+    queryKey: ['jobPostings'],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getAllJobPostings();
+      } catch (err) {
+        console.error('getAllJobPostings error:', err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetJobPosting(id: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<JobPosting | null>({
+    queryKey: ['jobPosting', id],
+    queryFn: async () => {
+      if (!actor || !id) return null;
+      try {
+        return await actor.getJobPosting(id);
+      } catch (err) {
+        console.error('getJobPosting error:', err);
+        return null;
+      }
+    },
+    enabled: !!actor && !isFetching && !!id,
+  });
+}
+
+export function useCreateJobPosting() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (posting: JobPosting) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.createJobPosting(posting);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobPostings'] });
+    },
+  });
+}
+
+export function useUpdateJobPosting() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, posting }: { id: string; posting: JobPosting }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateJobPosting(id, posting);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobPostings'] });
+    },
+  });
+}
+
+// ===== Applicant Queries =====
+
+export function useGetAllApplicants() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Applicant[]>({
+    queryKey: ['applicants'],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getAllApplicants();
+      } catch (err) {
+        console.error('getAllApplicants error:', err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetApplicantsForPosting(jobPostingId: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<Applicant[]>({
+    queryKey: ['applicants', 'posting', jobPostingId],
+    queryFn: async () => {
+      if (!actor || !jobPostingId) return [];
+      try {
+        return await actor.getApplicantsForPosting(jobPostingId);
+      } catch (err) {
+        console.error('getApplicantsForPosting error:', err);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching && !!jobPostingId,
+  });
+}
+
+export function useAddApplicant() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicant: Applicant) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.addApplicant(applicant);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicants'] });
+    },
+  });
+}
+
+export function useUpdateApplicantStage() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, stage }: { id: string; stage: ApplicantStage }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateApplicantStage(id, stage);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicants'] });
     },
   });
 }
@@ -351,7 +392,12 @@ export function useGetAllTimeOffRequests() {
     queryKey: ['timeOffRequests'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllTimeOffRequests();
+      try {
+        return await actor.getAllTimeOffRequests();
+      } catch (err) {
+        console.error('getAllTimeOffRequests error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -360,10 +406,15 @@ export function useGetAllTimeOffRequests() {
 export function useGetTimeOffRequestsForEmployee(employeeId: string) {
   const { actor, isFetching } = useActor();
   return useQuery<TimeOffRequest[]>({
-    queryKey: ['timeOffRequests', employeeId],
+    queryKey: ['timeOffRequests', 'employee', employeeId],
     queryFn: async () => {
       if (!actor || !employeeId) return [];
-      return actor.getAllTimeOffRequestsForEmployee(employeeId);
+      try {
+        return await actor.getAllTimeOffRequestsForEmployee(employeeId);
+      } catch (err) {
+        console.error('getAllTimeOffRequestsForEmployee error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching && !!employeeId,
   });
@@ -411,7 +462,7 @@ export function useDenyTimeOffRequest() {
   });
 }
 
-// ===== PTO Queries =====
+// ===== PTO Policy Queries =====
 
 export function useGetAllPTOPolicies() {
   const { actor, isFetching } = useActor();
@@ -419,22 +470,31 @@ export function useGetAllPTOPolicies() {
     queryKey: ['ptoPolicies'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllPTOPolicies();
+      try {
+        return await actor.getAllPTOPolicies();
+      } catch (err) {
+        console.error('getAllPTOPolicies error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useGetPTOBalance(employeeId: string) {
+export function useGetPTOPolicy(policyId: string) {
   const { actor, isFetching } = useActor();
-  return useQuery<PTOBalance>({
-    queryKey: ['ptoBalance', employeeId],
+  return useQuery<PTOPolicy | null>({
+    queryKey: ['ptoPolicy', policyId],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getPTOBalance(employeeId);
+      if (!actor || !policyId) return null;
+      try {
+        return await actor.getPTOPolicy(policyId);
+      } catch (err) {
+        console.error('getPTOPolicy error:', err);
+        return null;
+      }
     },
-    enabled: !!actor && !isFetching && !!employeeId,
-    retry: false,
+    enabled: !!actor && !isFetching && !!policyId,
   });
 }
 
@@ -466,17 +526,45 @@ export function useUpdatePTOPolicy() {
   });
 }
 
-export function useUpdatePTOBalance() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (balance: PTOBalance) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updatePTOBalance(balance);
+// ===== PTO Balance Queries =====
+
+export function useGetPTOBalance(employeeId: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<PTOBalance | null>({
+    queryKey: ['ptoBalance', employeeId],
+    queryFn: async () => {
+      if (!actor || !employeeId) return null;
+      try {
+        return await actor.getPTOBalance(employeeId);
+      } catch (err) {
+        console.error('getPTOBalance error:', err);
+        return null;
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ptoBalance'] });
+    enabled: !!actor && !isFetching && !!employeeId,
+  });
+}
+
+export function useGetAllPTOBalances() {
+  const { actor, isFetching } = useActor();
+  const { data: employees } = useGetAllEmployees();
+  return useQuery<PTOBalance[]>({
+    queryKey: ['ptoBalances'],
+    queryFn: async () => {
+      if (!actor || !employees) return [];
+      try {
+        const results = await Promise.allSettled(
+          employees.map((emp) => actor.getPTOBalance(emp.id))
+        );
+        return results
+          .filter((r): r is PromiseFulfilledResult<PTOBalance> => r.status === 'fulfilled' && r.value !== null)
+          .map((r) => r.value);
+      } catch (err) {
+        console.error('getAllPTOBalances error:', err);
+        return [];
+      }
     },
+    enabled: !!actor && !isFetching && !!employees,
   });
 }
 
@@ -489,12 +577,26 @@ export function useAddPTOBalance() {
       return actor.addPTOBalance(balance);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ptoBalance'] });
+      queryClient.invalidateQueries({ queryKey: ['ptoBalances'] });
     },
   });
 }
 
-// ===== Account Queries =====
+export function useUpdatePTOBalance() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (balance: PTOBalance) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updatePTOBalance(balance);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ptoBalances'] });
+    },
+  });
+}
+
+// ===== Account Management =====
 
 export function useCreateAccount() {
   const { actor } = useActor();
@@ -515,26 +617,26 @@ export function useCreateAccount() {
       return actor.createAccount(displayName, username, passwordHash, role);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
   });
 }
 
-export function useSetRole() {
+export function useLoginWithBadgeId() {
   const { actor } = useActor();
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ username, role }: { username: string; role: Role }) => {
+    mutationFn: async (badgeId: string) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.setRole(username, role);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      const result = await actor.loginWithBadgeId(badgeId);
+      if (result.__kind__ === 'err') {
+        throw new Error(result.err);
+      }
+      return result.ok;
     },
   });
 }
 
-// ===== Timesheet Hooks =====
+// ===== Timesheet Queries =====
 
 export function useTimesheets() {
   const { actor, isFetching } = useActor();
@@ -542,10 +644,14 @@ export function useTimesheets() {
     queryKey: ['timesheets'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getTimesheets();
+      try {
+        return await actor.getTimesheets();
+      } catch (err) {
+        console.error('getTimesheets error:', err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
-    staleTime: 0,
   });
 }
 
@@ -556,7 +662,9 @@ export function useSubmitTimesheet() {
     mutationFn: async (timesheet: Timesheet) => {
       if (!actor) throw new Error('Actor not available');
       const result = await actor.submitTimesheet(timesheet);
-      if (result.__kind__ === 'err') throw new Error(result.err);
+      if (result.__kind__ === 'err') {
+        throw new Error(result.err);
+      }
       return result.ok;
     },
     onSuccess: () => {
@@ -580,7 +688,9 @@ export function useManagerReviewTimesheet() {
     }) => {
       if (!actor) throw new Error('Actor not available');
       const result = await actor.managerReviewTimesheet(id, approved, comment);
-      if (result.__kind__ === 'err') throw new Error(result.err);
+      if (result.__kind__ === 'err') {
+        throw new Error(result.err);
+      }
       return result.ok;
     },
     onSuccess: () => {
@@ -604,11 +714,40 @@ export function useHrReviewTimesheet() {
     }) => {
       if (!actor) throw new Error('Actor not available');
       const result = await actor.hrReviewTimesheet(id, approved, comment);
-      if (result.__kind__ === 'err') throw new Error(result.err);
+      if (result.__kind__ === 'err') {
+        throw new Error(result.err);
+      }
       return result.ok;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timesheets'] });
     },
   });
+}
+
+// ===== User Profile =====
+
+export function useGetCallerUserProfile() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  const query = useQuery<UserProfile | null>({
+    queryKey: ['currentUserProfile'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      try {
+        return await actor.getCallerUserProfile();
+      } catch (err) {
+        console.error('getCallerUserProfile error:', err);
+        return null;
+      }
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
+  });
+
+  return {
+    ...query,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
 }

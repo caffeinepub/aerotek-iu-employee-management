@@ -1,16 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Add a two-stage timesheet approval workflow (Employee → Manager → HR Admin) and ensure employees can instantly view published schedules.
+**Goal:** Fix the "Something went wrong" startup crash affecting both the frontend and backend of the Aerotek IU Employee Management app.
 
 **Planned changes:**
-- Add a `Timesheet` record type and stable map to the backend with fields for entries, total hours, status, comments, and week start date
-- Add backend endpoints: `submitTimesheet` (employee only), `getTimesheets` (role-filtered), `managerReviewTimesheet` (Manager/HR Admin), and `hrReviewTimesheet` (HR Admin only), enforcing the two-stage approval flow
-- Add React Query hooks: `useTimesheets`, `useSubmitTimesheet`, `useManagerReviewTimesheet`, `useHrReviewTimesheet`
-- Create `EmployeeTimesheetPage` with a weekly entry grid (start/end time inputs, auto-calculated hours, total), submission with validation, and a history list with status badges
-- Create `ManagerTimesheetPage` with "Pending Your Review" and "Reviewed/Processed" sections, approve/deny actions, and optional denial comment modal
-- Create `HRTimesheetPage` with "Pending Final HR Approval" (manager-approved timesheets) and "All Timesheets" sections with search and status filtering, plus final approve/deny actions
-- Add "Timesheets" sidebar links and routes for HR Admin (`/hr/timesheets`), Manager (`/manager/timesheets`), and Employee (`/employee/timesheet`) in their respective layouts and `App.tsx`
-- Set `staleTime: 0` or a polling interval on the shifts query in `EmployeeSchedulePage` and `EmployeeDashboard` so published shifts appear immediately on navigation; filter to only show `#published` shifts on employee-facing pages
+- Audit and fix the Motoko backend (`backend/main.mo`) for runtime initialization errors, ensuring stable variable declarations, consistent type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet), pre-seeded admin accounts (`richaadi0` and `Adirich`), and post-upgrade hooks all initialize without trapping.
+- Fix frontend startup crash in `App.tsx`, `AuthContext.tsx`, `useActor.ts`, and `useQueries.ts` by resolving null/undefined actor access, broken route imports, sessionStorage errors, and QueryClient configuration issues; add error boundaries where needed.
+- Resolve all TypeScript compilation errors related to `directManagerId`, `scheduleStatus`, and Timesheet types across all affected page components and hooks so the Vite build completes successfully.
 
-**User-visible outcome:** Employees can submit weekly timesheets, managers can approve or deny them, and HR Admins can give final approval or denial. Employees can also instantly see newly published schedules without a page reload.
+**User-visible outcome:** The application loads to the login page without any crash screen, and both pre-seeded admin accounts remain functional.
