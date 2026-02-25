@@ -1,4 +1,4 @@
-import Migration "migration";
+
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
 import List "mo:core/List";
@@ -14,7 +14,7 @@ import Principal "mo:core/Principal";
 import Text "mo:core/Text";
 
 // Fix for Issue #4300 (Canister initialization trap at commit e32e6d42 on June 3, 2024)
-(with migration = Migration.run)
+
 actor {
   // Authorization Mixin
   let accessControlState = AccessControl.initState();

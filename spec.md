@@ -1,11 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the "Something went wrong" startup crash affecting both the frontend and backend of the Aerotek IU Employee Management app.
+**Goal:** Fix the crash that occurs when an HR Admin clicks the "Add Staff" button on the staff management page.
 
 **Planned changes:**
-- Audit and fix the Motoko backend (`backend/main.mo`) for runtime initialization errors, ensuring stable variable declarations, consistent type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet), pre-seeded admin accounts (`richaadi0` and `Adirich`), and post-upgrade hooks all initialize without trapping.
-- Fix frontend startup crash in `App.tsx`, `AuthContext.tsx`, `useActor.ts`, and `useQueries.ts` by resolving null/undefined actor access, broken route imports, sessionStorage errors, and QueryClient configuration issues; add error boundaries where needed.
-- Resolve all TypeScript compilation errors related to `directManagerId`, `scheduleStatus`, and Timesheet types across all affected page components and hooks so the Vite build completes successfully.
+- Fix runtime errors in `AddEmployeePage.tsx` including null/undefined actor access, type mismatches on `directManagerId`, broken form field bindings, and missing component references.
+- Ensure the Direct Manager dropdown populates correctly without throwing runtime errors.
+- Fix the `useCreateEmployeeWithAccount` mutation hook in `useQueries.ts` to guard against null/undefined actor, correctly handle `#ok`/`#err` backend response variants, and invalidate the employees query cache on success.
+- Ensure form validation shows inline errors for empty required fields without crashing.
+- Ensure successful submission shows a success toast and navigates back to the employee list.
+- Resolve all TypeScript compilation errors in `AddEmployeePage.tsx`.
 
-**User-visible outcome:** The application loads to the login page without any crash screen, and both pre-seeded admin accounts remain functional.
+**User-visible outcome:** HR Admins can open the Add Staff form, fill in all fields including the Direct Manager dropdown, and successfully submit the form without any crashes or unhandled errors.

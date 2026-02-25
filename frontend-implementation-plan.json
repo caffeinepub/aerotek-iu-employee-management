@@ -1,108 +1,42 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix 'Something Went Wrong' startup crash",
+  "title": "Fix Staff Management Page crash on 'Add Staff'",
   "requirements": [
     {
-      "id": "REQ-77",
-      "summary": "Fix frontend application startup crash that displays 'Something went wrong' error on initial load",
+      "id": "REQ-79",
+      "summary": "Fix the crash/error in AddEmployeePage.tsx that occurs when clicking 'Add Staff' button",
       "acceptanceCriteria": [
-        "The application loads to the login page without showing any 'Something went wrong' error screen.",
-        "No unhandled exceptions are thrown during the React tree mount sequence.",
-        "sessionStorage read/write operations are wrapped in try/catch so malformed or missing data does not crash the app.",
-        "All route component imports in App.tsx resolve successfully — no missing or incorrectly referenced page components.",
-        "The actor initialization in useActor.ts completes without throwing on first load.",
-        "React Query's QueryClient is configured without errors and the QueryClientProvider wraps the app correctly.",
-        "If an error boundary catches a downstream error, it displays a graceful fallback rather than a blank screen."
+        "Clicking 'Add Staff' on the HR Employees page opens the AddEmployeePage form without any crash or error screen.",
+        "The Direct Manager dropdown populates with active manager-role employees without throwing a runtime error.",
+        "All form fields (name, email, department, role, username, password, directManagerId, etc.) are bound correctly and accept user input.",
+        "Submitting the form with valid data calls the backend employee creation endpoint without an unhandled exception.",
+        "Inline validation errors are shown for empty required fields without crashing.",
+        "A success toast is displayed and the user is navigated back to the employee list on successful submission.",
+        "No TypeScript compilation errors exist in AddEmployeePage.tsx."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/contexts/AuthContext.tsx",
+          "path": "frontend/src/pages/hr/AddEmployeePage.tsx",
           "operation": "modify",
-          "description": "Wrap sessionStorage.getItem and JSON.parse calls in the getStoredSession function with a try-catch block to prevent crashes from malformed or missing session data. Return null on any error instead of throwing. Ensure setSession also wraps sessionStorage.setItem in try-catch to handle quota exceeded or other storage errors gracefully."
-        },
-        {
-          "path": "frontend/src/hooks/useActor.ts",
-          "operation": "modify",
-          "description": "Add error handling around actor creation and initialization to prevent unhandled promise rejections during mount. Wrap the actor creation logic in try-catch and set a stable error state instead of throwing. Ensure the hook returns a consistent actor reference (null on error) to prevent downstream null reference errors. Add defensive checks before calling actor methods in the initialization effect."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Add a top-level React ErrorBoundary component that wraps the entire RouterProvider to catch any unhandled errors during routing or component mount. The error boundary should display a user-friendly fallback UI with a 'Reload' button instead of crashing to a blank screen. Verify all lazy-loaded route component imports are correctly referenced and do not have missing or renamed files. Add error handling to the beforeLoad redirect logic to prevent crashes from invalid session states."
-        },
-        {
-          "path": "frontend/src/main.tsx",
-          "operation": "modify",
-          "description": "Wrap the root React.render call in a try-catch block to log any top-level mount errors to the console before the error boundary can catch them. Ensure QueryClientProvider and InternetIdentityProvider are correctly configured with no null or undefined props that could cause initialization errors."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add defensive null checks on the actor reference in all query and mutation functions. If actor is null or undefined, return a stable rejected promise with a descriptive error message instead of attempting to call methods on null. This prevents 'Cannot read property of null' errors during initial render before the actor is ready."
-        },
-        {
-          "path": "frontend/src/pages/LoginPage.tsx",
-          "operation": "modify",
-          "description": "Ensure the LoginPage component does not throw errors during mount if sessionStorage or actor is unavailable. Add try-catch around any code that reads from sessionStorage or initializes the badge scanner. If the BarcodeDetector API is not supported, gracefully fall back to manual badge entry without crashing."
-        },
-        {
-          "path": "frontend/src/components/ErrorBoundary.tsx",
-          "operation": "create",
-          "description": "Create a reusable ErrorBoundary component that catches React errors, logs them, and displays a fallback UI with an error message and a 'Reload Page' button. Export this component for use in App.tsx."
+          "description": "Fix all runtime errors in the AddEmployeePage component: Guard against null/undefined actor access by checking the actor exists before rendering the form; fix type mismatches on the directManagerId field by ensuring it is properly typed as optional string and the manager dropdown correctly handles the field binding; ensure all form fields (fullName, email, department, jobTitle, phone, role, badgeId, startDate, directManagerId, username, password) are properly bound to form state with correct TypeScript types matching the CreateEmployeeWithAccountInput interface; wrap the mutation call in proper error handling to catch and display backend errors without crashing; add loading state checks to prevent form submission while the mutation is in progress; ensure the Direct Manager dropdown filters employees by role (manager, supervisor, hrAdmin) and status (active) and maps them correctly to dropdown options; verify form validation triggers inline error messages without throwing exceptions; ensure navigation back to the employees list occurs only after successful submission."
         }
       ]
     },
     {
-      "id": "REQ-78",
-      "summary": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash",
+      "id": "REQ-80",
+      "summary": "Audit and fix the mutation hook in useQueries.ts for employee creation",
       "acceptanceCriteria": [
-        "The frontend TypeScript compilation completes with zero errors.",
-        "All page components that reference `directManagerId` or `scheduleStatus` fields compile without type errors.",
-        "All timesheet page components correctly type the data returned from the `useTimesheets` query.",
-        "No implicit `any` types or undefined variable references remain in any page, hook, or context file.",
-        "The Vite build process completes successfully and produces a deployable bundle."
+        "The mutation hook does not throw if the actor is null or undefined — it rejects with a descriptive error message instead.",
+        "A backend #ok response resolves the Promise and triggers employees query cache invalidation.",
+        "A backend #err response rejects the Promise with the error text, which is surfaced to the form as an inline error.",
+        "No unhandled promise rejections occur during the mutation call."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Timesheet data structure. Ensure the Timesheet type imported from backend.d.ts matches the data shape returned by useTimesheets query. Update all references to timesheet.entries to correctly type TimesheetEntry fields (date, startTime, endTime, hoursWorked). Remove any incorrect optional chaining or type assertions that conflict with the backend interface definition."
-        },
-        {
-          "path": "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Timesheet data structure in the manager review flow. Ensure the component correctly types the timesheets array from useTimesheets query and all timesheet properties (status, employeeId, entries, managerComment, hrComment). Update any type guards or conditional logic to align with the TimesheetStatus enum from backend.d.ts."
-        },
-        {
-          "path": "frontend/src/pages/hr/HRTimesheetPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Timesheet data structure in the HR review flow. Ensure the component correctly types the timesheets array and all status filtering logic aligns with the TimesheetStatus enum. Update the approval/denial handlers to correctly type the hrComment field as optional string per the backend interface."
-        },
-        {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Fix TypeScript type errors in all query and mutation hooks. Ensure the return types of all backend actor method calls match the types defined in backend.d.ts. Fix any type mismatches on Employee.directManagerId (should be optional string), Shift.scheduleStatus (verify this field exists or remove references), and all Timesheet-related types. Remove any incorrect type casts or assertions that suppress real type errors."
-        },
-        {
-          "path": "frontend/src/pages/hr/EmployeeDetailPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Employee.directManagerId field. Ensure the field is correctly typed as optional string (string | undefined) in all form inputs, state variables, and API calls. Update the manager selection dropdown to handle undefined values gracefully."
-        },
-        {
-          "path": "frontend/src/pages/hr/AddEmployeePage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Employee.directManagerId field in the employee creation form. Ensure the CreateEmployeeWithAccountInput type correctly includes directManagerId as an optional string. Update form validation and submission logic to handle undefined manager assignments without type errors."
-        },
-        {
-          "path": "frontend/src/pages/hr/SchedulingPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Shift data structure. If the component references a scheduleStatus field that does not exist in the backend Shift type, remove those references or map them to the correct status field. Ensure all shift operations (create, update, delete) use the correct Shift type from backend.d.ts."
-        },
-        {
-          "path": "frontend/src/pages/manager/ManagerSchedulingPage.tsx",
-          "operation": "modify",
-          "description": "Fix TypeScript type errors related to Shift data structure. Verify all shift property references match the backend Shift interface (id, employeeId, department, date, startTime, endTime, status). Remove any references to fields not defined in backend.d.ts. Ensure the ShiftStatus enum is used correctly for status filtering and display."
+          "description": "Fix the useCreateEmployeeWithAccount mutation hook (or equivalent employee creation mutation) to guard against null/undefined actor by checking if actor exists before calling the backend method and throwing a descriptive error if not; ensure the mutationFn properly awaits the backend call and handles the response (the backend method createEmployeeWithAccount returns Promise<void>, so verify it resolves correctly); add proper error handling to catch any exceptions from the backend call and reject the Promise with a user-friendly error message; configure the onSuccess callback to invalidate the 'employees' query key using queryClient.invalidateQueries so the employee list refreshes automatically after successful creation; ensure the mutation hook is properly typed with CreateEmployeeWithAccountInput as the input parameter type."
         }
       ]
     }

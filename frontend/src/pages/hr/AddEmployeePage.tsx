@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export default function AddEmployeePage() {
   const navigate = useNavigate();
   const createEmployee = useCreateEmployee();
-  const { data: managers = [] } = useGetEmployeesByRole(Role.manager);
+  const { data: managers = [], isLoading: managersLoading } = useGetEmployeesByRole(Role.manager);
 
   const [form, setForm] = useState({
     id: '',
@@ -22,7 +22,7 @@ export default function AddEmployeePage() {
     phone: '',
     department: '',
     jobTitle: '',
-    role: 'employee' as Role,
+    role: Role.employee,
     badgeId: '',
     username: '',
     password: '',
@@ -42,8 +42,9 @@ export default function AddEmployeePage() {
     if (!form.username.trim()) newErrors.username = 'Username is required';
     if (!form.password.trim()) newErrors.password = 'Password is required';
     if (form.password !== form.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    // Direct manager required for non-manager roles
-    if (form.role !== Role.manager && form.role !== Role.hrAdmin && !form.directManagerId) {
+    // Direct manager required for non-manager/non-hrAdmin roles
+    const needsManager = form.role !== Role.manager && form.role !== Role.hrAdmin;
+    if (needsManager && !form.directManagerId) {
       newErrors.directManagerId = 'Direct manager is required';
     }
     setErrors(newErrors);
@@ -54,8 +55,10 @@ export default function AddEmployeePage() {
     e.preventDefault();
     if (!validate()) return;
 
-    const resolvedManagerId =
-      form.role === Role.manager || form.role === Role.hrAdmin ? 'HR' : form.directManagerId;
+    const isManagerOrHR = form.role === Role.manager || form.role === Role.hrAdmin;
+    const resolvedManagerId: string | undefined = isManagerOrHR
+      ? undefined
+      : form.directManagerId || undefined;
 
     const profile: Employee = {
       id: form.id.trim(),
@@ -82,11 +85,13 @@ export default function AddEmployeePage() {
       toast.success('Employee created successfully');
       navigate({ to: '/hr/employees' });
     } catch (err) {
-      toast.error('Failed to create employee: ' + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error('Failed to create employee: ' + msg);
     }
   }
 
   const isManagerRole = form.role === Role.manager || form.role === Role.hrAdmin;
+  const activeManagers = managers.filter(m => m.status === EmployeeStatus.active);
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
@@ -169,7 +174,10 @@ export default function AddEmployeePage() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="role">Role *</Label>
-                <Select value={form.role} onValueChange={v => setForm(p => ({ ...p, role: v as Role, directManagerId: '' }))}>
+                <Select
+                  value={form.role}
+                  onValueChange={v => setForm(p => ({ ...p, role: v as Role, directManagerId: '' }))}
+                >
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
@@ -195,25 +203,38 @@ export default function AddEmployeePage() {
 
             {/* Direct Manager */}
             <div className="space-y-1">
-              <Label htmlFor="directManager">Direct Manager *</Label>
+              <Label htmlFor="directManager">
+                Direct Manager {!isManagerRole && '*'}
+              </Label>
               {isManagerRole ? (
                 <Input value="Human Resources" disabled className="bg-muted" />
               ) : (
-                <Select value={form.directManagerId} onValueChange={v => setForm(p => ({ ...p, directManagerId: v }))}>
+                <Select
+                  value={form.directManagerId}
+                  onValueChange={v => setForm(p => ({ ...p, directManagerId: v }))}
+                  disabled={managersLoading}
+                >
                   <SelectTrigger id="directManager">
-                    <SelectValue placeholder="Select direct manager" />
+                    <SelectValue placeholder={managersLoading ? 'Loading managers...' : 'Select direct manager'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {managers.map(mgr => (
-                      <SelectItem key={mgr.id} value={mgr.id}>{mgr.fullName}</SelectItem>
-                    ))}
-                    {managers.length === 0 && (
-                      <SelectItem value="" disabled>No managers available</SelectItem>
+                    {activeManagers.length > 0 ? (
+                      activeManagers.map(mgr => (
+                        <SelectItem key={mgr.id} value={mgr.id}>
+                          {mgr.fullName}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        {managersLoading ? 'Loading...' : 'No managers available'}
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
               )}
-              {errors.directManagerId && <p className="text-xs text-destructive">{errors.directManagerId}</p>}
+              {errors.directManagerId && (
+                <p className="text-xs text-destructive">{errors.directManagerId}</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -254,19 +275,29 @@ export default function AddEmployeePage() {
                   onChange={e => setForm(p => ({ ...p, confirmPassword: e.target.value }))}
                   placeholder="••••••••"
                 />
-                {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
+                {errors.confirmPassword && (
+                  <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => navigate({ to: '/hr/employees' })}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ to: '/hr/employees' })}
+            disabled={createEmployee.isPending}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={createEmployee.isPending}>
             {createEmployee.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating...</>
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Creating...
+              </>
             ) : (
               'Create Employee'
             )}

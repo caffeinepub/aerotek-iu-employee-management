@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 23,
+  "projectStateVersion": 25,
   "summary": "Building 'Aerotek (IU) Employee Management' — a comprehensive HR platform with hiring, staff management, scheduling, time off, and PTO policy features. Login-only access (no sign-up). Roles for HR personnel, managers, supervisors, and employees. HR Admin can set user roles (Manager, Supervisor, Employee). Managers and HR Admins can create employees with login credentials. Supervisors can view schedules and approve time off but cannot hire, add, or terminate employees. Pre-configured admin logins: richaadi0 / 3vtpxdgf and Adirich / 3vtpxdgf.",
   "architectural_notes": [
     "Login-only platform — no public sign-up; accounts created by HR admin only",
@@ -16,7 +16,8 @@
   "known_issues": [
     "Login system has errors preventing account creation and authentication — requires fix",
     "Pre-seeded admin accounts (richaadi0, Adirich) are denied login access — auth validation not recognizing seeded credentials",
-    "App shows 'Something went wrong' error on startup — likely a runtime initialization crash"
+    "App shows 'Something went wrong' error on startup — likely a runtime initialization crash",
+    "Staff management page errors/crashes when clicking 'Add Staff' button"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -377,6 +378,14 @@
       "title": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
       "reqIds": [
         "REQ-78"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-crash-error-in-frontend-src-pages-hr-addemployeepage-tsx-that-occurs-when-the-hr-admin-clicks-the-add-staff-button-on-the-staff-management-page-investigate-and-resolve-all-runtime-errors-including-null-undefined-actor-access-before-initialization-type-mismatches-on-the-directmanagerid-field-or-manager-dropdown-data-missing-or-broken-form-field-bindings-unhandled-promise-rejections-from-the-createemployeewithaccount-or-equivalent-mutation-and-any-broken-imports-or-missing-component-references-the-form-must-open-and-render-without-errors-all-fields-including-the-direct-manager-dropdown-and-username-password-fields-must-populate-correctly-and-submission-must-complete-without-throwing-an-unhandled-exception",
+      "title": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
+      "reqIds": [
+        "REQ-79"
       ],
       "version": 1
     }
@@ -781,6 +790,20 @@
       "summary": "Audit and fix the Motoko backend (`backend/main.mo`) for any runtime initialization errors that cause the canister to trap or fail on startup. Ensure all stable variable declarations are valid, all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet) are consistent and non-conflicting, all pre-seeded data (accounts for 'richaadi0' and 'Adirich') is initialized without errors, and all post-upgrade hooks execute without trapping. The backend must deploy and initialize cleanly without any runtime errors.",
       "reqIds": [
         "REQ-76"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-70",
+      "summary": "Fix the staff management page crash/error that occurs when clicking 'Add Staff' button",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-72",
+      "summary": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
+      "reqIds": [
+        "REQ-80"
       ],
       "status": "pending"
     }

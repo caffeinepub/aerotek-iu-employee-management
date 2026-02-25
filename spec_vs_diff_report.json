@@ -1,51 +1,24 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T15:41:25.888Z",
-  "summary": "The diff addresses all three requirements (REQ-76, REQ-77, REQ-78) with substantial coverage. The backend main.mo is fixed with consistent type definitions, pre-seeded accounts, and migration hooks. The frontend crash is addressed via ErrorBoundary, safe sessionStorage access, lazy-loaded route components, and defensive null checks. TypeScript types for Employee (directManagerId), Shift, and Timesheet are consistently used across page components. A few specific acceptance criteria have partial or unclear coverage based on available diff evidence.",
+  "generatedAt": "2026-02-25T01:54:41.280Z",
+  "summary": "The diff modifies AddEmployeePage.tsx and useQueries.ts (evidenced by file-summaries.txt) to address the crash on 'Add Staff'. AddEmployeePage.tsx shows proper form bindings, manager dropdown with active filtering, validation, error handling, toast on success, and navigation. The useQueries.ts file-summary mentions defensive null checks, try/catch error handling, and relevant hooks. However, several specific REQ-80 acceptance criteria cannot be fully verified from the diff due to truncation of useQueries.ts content. The AddEmployeePage.tsx uses useCreateEmployee rather than useCreateEmployeeWithAccount, which may or may not be an alias. Overall, the core requirements appear addressed but some REQ-80 internals are not directly visible.",
   "missing_requirements": [
     {
-      "id": "REQ-76",
-      "requirement": "The Shift type must include a scheduleStatus field as specified in the requirements.",
-      "reason": "The diff shows the Shift type uses a status: ShiftStatus field (with draft/published variants) but not a field named scheduleStatus. The build request and REQ-78 both reference scheduleStatus as a field that must exist on Shift and be typed correctly across frontend pages.",
+      "id": "REQ-80",
+      "requirement": "The mutation hook must guard against null/undefined actor, map #ok/#err response variants to resolved/rejected Promises, and invalidate the employees query cache on success.",
+      "reason": "The useQueries.ts file was modified and the summary mentions defensive null checks and try/catch, but the actual diff content for useQueries.ts is not shown. The specific AC items (null actor guard rejects with descriptive message, #ok resolves + invalidates cache, #err rejects with error text surfaced as inline error) cannot be confirmed as implemented from the available evidence.",
       "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-78",
-      "requirement": "All page components that reference the scheduleStatus field on Shift must compile without type errors.",
-      "reason": "The backend Shift type uses status: ShiftStatus rather than scheduleStatus, and the diff does not show ManagerSchedulingPage.tsx or SchedulingPage.tsx being updated to handle this field name. If these pages reference scheduleStatus, they would still have type errors.",
-      "evidence": [
-        "frontend/src/pages/manager/ManagerSchedulingPage.tsx",
-        "frontend/src/pages/hr/SchedulingPage.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend-file-summaries.txt"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "A standalone backend/migration.mo module was added as a separate file.",
-      "reason": "The build request's REQ-76 only specifies fixing runtime initialization errors in backend/main.mo. It does not request creating a separate migration module file. While this may support the fix, it is an architectural addition not explicitly requested.",
-      "evidence": [
-        "backend/migration.mo"
-      ]
-    }
-  ],
-  "confidence": 0.72,
+  "hallucinated_features": [],
+  "confidence": 0.55,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/ErrorBoundary.tsx",
-    "frontend/src/contexts/AuthContext.tsx",
-    "frontend/src/hooks/useAuth.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/layouts/SupervisorLayout.tsx",
-    "frontend/src/pages/LoginPage.tsx",
-    "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-    "frontend/src/pages/hr/HRTimesheetPage.tsx",
-    "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+    "frontend/src/pages/hr/AddEmployeePage.tsx",
     "project_state.json"
   ]
 }

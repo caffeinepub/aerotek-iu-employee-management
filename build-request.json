@@ -1,81 +1,58 @@
 {
   "kind": "build_request",
-  "title": "Fix 'Something Went Wrong' startup crash",
-  "projectName": "Aerotek IU Employee Management",
+  "title": "Fix Staff Management Page crash on 'Add Staff'",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-76",
-      "text": "Audit and fix the Motoko backend (`backend/main.mo`) for any runtime initialization errors that cause the canister to trap or fail on startup. Ensure all stable variable declarations are valid, all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet) are consistent and non-conflicting, all pre-seeded data (accounts for 'richaadi0' and 'Adirich') is initialized without errors, and all post-upgrade hooks execute without trapping. The backend must deploy and initialize cleanly without any runtime errors.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "Fix app error it says something went wrong when it started up app"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The backend canister deploys and initializes without trapping or throwing any runtime errors.",
-        "All stable variable declarations compile and initialize correctly.",
-        "Pre-seeded admin accounts ('richaadi0' and 'Adirich') are present after initialization.",
-        "All data type definitions (Employee, Shift, Timesheet) are consistent with no duplicate or conflicting declarations.",
-        "The canister survives upgrade cycles without data corruption or initialization traps."
-      ]
-    },
-    {
-      "id": "REQ-77",
-      "text": "Audit and fix the frontend application startup crash that displays a 'Something went wrong' error screen on initial load. Inspect `frontend/src/App.tsx`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/hooks/useActor.ts`, and `frontend/src/hooks/useQueries.ts` for any errors that occur during mount — including errors reading from sessionStorage, null/undefined actor access before initialization, broken route component imports, missing lazy-loaded page components, or QueryClient configuration errors. Add error boundaries where needed. The app must load to the login page without any crash screen on first visit.",
+      "id": "REQ-79",
+      "text": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Fix app error it says something went wrong when it started up app"
+          "Fix the staff management page when hitting add staff"
         ]
       },
       "acceptanceCriteria": [
-        "The application loads to the login page without showing any 'Something went wrong' error screen.",
-        "No unhandled exceptions are thrown during the React tree mount sequence.",
-        "sessionStorage read/write operations are wrapped in try/catch so malformed or missing data does not crash the app.",
-        "All route component imports in App.tsx resolve successfully — no missing or incorrectly referenced page components.",
-        "The actor initialization in useActor.ts completes without throwing on first load.",
-        "React Query's QueryClient is configured without errors and the QueryClientProvider wraps the app correctly.",
-        "If an error boundary catches a downstream error, it displays a graceful fallback rather than a blank screen."
+        "Clicking 'Add Staff' on the HR Employees page opens the AddEmployeePage form without any crash or error screen.",
+        "The Direct Manager dropdown populates with active manager-role employees without throwing a runtime error.",
+        "All form fields (name, email, department, role, username, password, directManagerId, etc.) are bound correctly and accept user input.",
+        "Submitting the form with valid data calls the backend employee creation endpoint without an unhandled exception.",
+        "Inline validation errors are shown for empty required fields without crashing.",
+        "A success toast is displayed and the user is navigated back to the employee list on successful submission.",
+        "No TypeScript compilation errors exist in AddEmployeePage.tsx."
       ]
     },
     {
-      "id": "REQ-78",
-      "text": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
+      "id": "REQ-80",
+      "text": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-1"
         ],
         "quotes": [
-          "Fix app error it says something went wrong when it started up app"
+          "Fix the staff management page when hitting add staff"
         ]
       },
       "acceptanceCriteria": [
-        "The frontend TypeScript compilation completes with zero errors.",
-        "All page components that reference `directManagerId` or `scheduleStatus` fields compile without type errors.",
-        "All timesheet page components correctly type the data returned from the `useTimesheets` query.",
-        "No implicit `any` types or undefined variable references remain in any page, hook, or context file.",
-        "The Vite build process completes successfully and produces a deployable bundle."
+        "The mutation hook does not throw if the actor is null or undefined — it rejects with a descriptive error message instead.",
+        "A backend `#ok` response resolves the Promise and triggers employees query cache invalidation.",
+        "A backend `#err` response rejects the Promise with the error text, which is surfaced to the form as an inline error.",
+        "No unhandled promise rejections occur during the mutation call."
       ]
     }
   ],
   "constraints": [
-    "Do not change the immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
-    "All Motoko logic must remain in the single actor file backend/main.mo.",
-    "Pre-seeded admin accounts (richaadi0/3vtpxdgf and Adirich/3vtpxdgf) must remain intact and functional after fixes."
+    "Do not modify any files listed under frontend.immutablePaths.",
+    "Do not alter the backend data model or endpoints unless strictly required to fix a type mismatch causing the frontend crash."
   ],
   "nonGoals": [
-    "Adding new features or pages not already defined in the existing feature set.",
-    "Changing the visual theme or redesigning any UI components.",
-    "Modifying the backend data model beyond what is required to fix initialization errors."
+    "Adding new fields or features to the Add Staff form beyond what is already specified.",
+    "Changing the visual design or layout of the Add Staff page.",
+    "Fixing unrelated pages or features not involved in the Add Staff flow."
   ],
   "imageRequirements": {
     "required": [],

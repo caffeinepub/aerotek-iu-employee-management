@@ -1,83 +1,43 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T15:41:25.893Z",
+  "generatedAt": "2026-02-25T01:54:41.285Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 2,
+    "total": 2,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-76",
-        "summary": "Audit and fix the Motoko backend (`backend/main.mo`) for any runtime initialization errors that cause the canister to trap or fail on startup. Ensure all stable variable declarations are valid, all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet) are consistent and non-conflicting, all pre-seeded data (accounts for 'richaadi0' and 'Adirich') is initialized without errors, and all post-upgrade hooks execute without trapping. The backend must deploy and initialize cleanly without any runtime errors.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-77",
-        "summary": "Audit and fix the frontend application startup crash that displays a 'Something went wrong' error screen on initial load. Inspect `frontend/src/App.tsx`, `frontend/src/contexts/AuthContext.tsx`, `frontend/src/hooks/useActor.ts`, and `frontend/src/hooks/useQueries.ts` for any errors that occur during mount — including errors reading from sessionStorage, null/undefined actor access before initialization, broken route component imports, missing lazy-loaded page components, or QueryClient configuration errors. Add error boundaries where needed. The app must load to the login page without any crash screen on first visit.",
+        "id": "REQ-79",
+        "summary": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/contexts/AuthContext.tsx",
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/App.tsx",
-          "frontend/src/main.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/LoginPage.tsx",
-          "frontend/src/components/ErrorBoundary.tsx"
+          "frontend/src/pages/hr/AddEmployeePage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/contexts/AuthContext.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/LoginPage.tsx",
-          "frontend/src/components/ErrorBoundary.tsx"
+          "frontend/src/pages/hr/AddEmployeePage.tsx"
         ]
       },
       {
-        "id": "REQ-78",
-        "summary": "Fix all TypeScript compilation errors across the frontend that may be causing the startup crash. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types across `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. Ensure the project builds without TypeScript errors or warnings that would prevent successful deployment.",
-        "status": "implemented",
+        "id": "REQ-80",
+        "summary": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
-          "frontend/src/pages/hr/HRTimesheetPage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/hr/EmployeeDetailPage.tsx",
-          "frontend/src/pages/hr/AddEmployeePage.tsx",
-          "frontend/src/pages/hr/SchedulingPage.tsx",
-          "frontend/src/pages/manager/ManagerSchedulingPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
-          "frontend/src/pages/hr/HRTimesheetPage.tsx",
           "frontend/src/hooks/useQueries.ts"
-        ]
+        ],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/components/ErrorBoundary.tsx",
-    "frontend/src/contexts/AuthContext.tsx",
-    "frontend/src/hooks/useAuth.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/layouts/SupervisorLayout.tsx",
-    "frontend/src/pages/LoginPage.tsx",
-    "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
-    "frontend/src/pages/hr/HRTimesheetPage.tsx",
-    "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+    "frontend/src/pages/hr/AddEmployeePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
