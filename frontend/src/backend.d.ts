@@ -26,6 +26,7 @@ export interface TimesheetEntry {
     endTime: string;
     date: string;
     hoursWorked: number;
+    buildingNumber?: string;
 }
 export type ServiceResult_1 = {
     __kind__: "ok";
@@ -212,6 +213,7 @@ export interface backendInterface {
     getJobPosting(id: string): Promise<JobPosting>;
     getPTOBalance(employeeId: string): Promise<PTOBalance>;
     getPTOPolicy(policyId: string): Promise<PTOPolicy>;
+    getShifts(): Promise<Array<Shift>>;
     getTimesheets(): Promise<Array<Timesheet>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     hasConflictingShift(newShift: Shift): Promise<boolean>;

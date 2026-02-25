@@ -1,179 +1,205 @@
 import React, { useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Moon, Clock } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useGetShiftsForEmployee } from '../../hooks/useQueries';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { useGetMyShifts } from '../../hooks/useQueries';
 import { ShiftStatus } from '../../backend';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronLeft, ChevronRight, Calendar, Clock, Moon } from 'lucide-react';
 
-function getWeekStart(date: Date): Date {
+function getWeekDays(weekStart: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+}
+
+// Returns the most recent Sunday for the given date (week starts on Sunday)
+function getSunday(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday, ...
+  d.setDate(d.getDate() - day);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function formatDateLabel(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDayHeader(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function formatTime(minutes: bigint): string {
-  const totalMins = Number(minutes);
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
+function formatTime(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24;
+  const m = minutes % 60;
   const ampm = h >= 12 ? 'PM' : 'AM';
-  const displayH = h % 12 === 0 ? 12 : h % 12;
-  return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`;
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
 function isOvernightShift(startTime: bigint, endTime: bigint): boolean {
-  return endTime <= startTime;
+  return Number(endTime) <= Number(startTime);
 }
 
 export default function EmployeeSchedulePage() {
-  const { session } = useAuth();
-  const [weekOffset, setWeekOffset] = useState(0);
+  const { session } = useAuthContext();
+  const [weekStart, setWeekStart] = useState<Date>(getSunday(new Date()));
 
-  const employeeId = session?.employeeId ?? '';
+  // Use getShifts() via useGetMyShifts — role-aware, no employeeId needed
+  const { data: allShifts = [], isLoading } = useGetMyShifts();
 
-  const { data: allShifts = [], isLoading } = useGetShiftsForEmployee(employeeId);
+  const weekDays = getWeekDays(weekStart);
+  const weekStartTs = BigInt(weekStart.getTime()) * 1_000_000n;
+  const weekEndTs = weekStartTs + BigInt(7 * 24 * 60 * 60 * 1_000_000_000);
 
-  // Only show published shifts
-  const shifts = allShifts.filter((s) => s.status === ShiftStatus.published);
+  // Filter: only published shifts for this week
+  const publishedShifts = allShifts.filter(
+    (s) =>
+      s.status === ShiftStatus.published &&
+      s.date >= weekStartTs &&
+      s.date < weekEndTs
+  );
 
-  const weekStart = getWeekStart(new Date());
-  weekStart.setDate(weekStart.getDate() + weekOffset * 7);
+  // Further filter by employeeId if we have it (for employees who logged in via badge)
+  const myShifts = session?.employeeId
+    ? publishedShifts.filter((s) => s.employeeId === session.employeeId)
+    : publishedShifts;
 
-  const days: Date[] = Array.from({ length: 7 }, (_, i) => {
+  const prevWeek = () => {
     const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const getShiftsForDay = (date: Date) => {
-    const dayStart = date.getTime();
-    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-    return shifts.filter((s) => {
-      const shiftDate = Number(s.date);
-      return shiftDate >= dayStart && shiftDate < dayEnd;
-    });
+    d.setDate(d.getDate() - 7);
+    setWeekStart(d);
   };
 
-  const weekShifts = days.flatMap((d) => getShiftsForDay(d));
+  const nextWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 7);
+    setWeekStart(d);
+  };
+
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  const formatDayName = (date: Date) =>
+    date.toLocaleDateString('en-US', { weekday: 'short' });
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const getShiftsForDay = (day: Date) => {
+    const dayStart = BigInt(day.getTime()) * 1_000_000n;
+    const dayEnd = dayStart + BigInt(24 * 60 * 60 * 1_000_000_000);
+    return myShifts.filter((s) => s.date >= dayStart && s.date < dayEnd);
+  };
+
+  const weekLabel = `${formatDate(weekDays[0])} – ${formatDate(weekDays[6])}`;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-amber-500/20">
-          <Calendar className="w-6 h-6 text-amber-400" />
-        </div>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Schedule</h1>
-          <p className="text-slate-400 text-sm">View your published shifts</p>
+          <h1 className="text-2xl font-bold text-foreground">My Schedule</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Your published shifts for the week
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={prevWeek}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[160px] text-center">
+            {weekLabel}
+          </span>
+          <Button variant="outline" size="icon" onClick={nextWeek}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Week Navigation */}
-      <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setWeekOffset((o) => o - 1)}
-            className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="text-center">
-            <p className="text-white font-semibold">
-              {formatDateLabel(weekStart)} – {formatDateLabel(days[6])}
-            </p>
-            <p className="text-slate-400 text-sm">
-              {weekShifts.length} shift{weekShifts.length !== 1 ? 's' : ''} this week
-            </p>
-          </div>
-          <button
-            onClick={() => setWeekOffset((o) => o + 1)}
-            className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Schedule Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+      {/* Loading */}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="h-32 bg-slate-800/60 rounded-xl animate-pulse" />
+            <Skeleton key={i} className="h-32 rounded-lg" />
           ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
-          {days.map((day, i) => {
-            const dayShifts = getShiftsForDay(day);
-            const isToday =
-              day.toDateString() === new Date().toDateString();
-            return (
-              <div
-                key={i}
-                className={`bg-slate-800/60 border rounded-xl p-3 min-h-[120px] ${
-                  isToday
-                    ? 'border-amber-500/50 bg-amber-500/5'
-                    : 'border-slate-700/50'
-                }`}
-              >
-                <p
-                  className={`text-xs font-semibold mb-2 ${
-                    isToday ? 'text-amber-400' : 'text-slate-400'
-                  }`}
-                >
-                  {formatDayHeader(day)}
-                  {isToday && (
-                    <span className="ml-1 text-amber-500">(Today)</span>
-                  )}
-                </p>
-                {dayShifts.length === 0 ? (
-                  <p className="text-slate-600 text-xs">No shifts</p>
-                ) : (
-                  <div className="space-y-2">
-                    {dayShifts.map((shift) => {
-                      const overnight = isOvernightShift(shift.startTime, shift.endTime);
-                      return (
-                        <div
-                          key={shift.id}
-                          className="bg-amber-500/15 border border-amber-500/30 rounded-lg p-2"
-                        >
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                            <span className="text-amber-300 text-xs font-medium">
-                              {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
-                            </span>
-                            {overnight && (
-                              <Moon className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-slate-400 text-xs mt-0.5">{shift.department}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
       )}
 
       {/* No shifts message */}
-      {!isLoading && weekShifts.length === 0 && (
-        <div className="text-center py-12 text-slate-500">
-          <Calendar className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium">No published shifts this week</p>
-          <p className="text-sm mt-1">Check back after your manager publishes the schedule.</p>
+      {!isLoading && myShifts.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Published Shifts
+            </h3>
+            <p className="text-muted-foreground text-sm max-w-xs">
+              No shifts have been published for this week yet. Check back later or contact your manager.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Weekly Grid */}
+      {!isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+          {weekDays.map((day) => {
+            const dayShifts = getShiftsForDay(day);
+            const today = isToday(day);
+
+            return (
+              <Card
+                key={day.toISOString()}
+                className={today ? 'border-primary ring-1 ring-primary' : ''}
+              >
+                <CardHeader className="pb-2 pt-3 px-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {formatDayName(day)}
+                    </span>
+                    {today && (
+                      <Badge variant="default" className="text-xs px-1.5 py-0">
+                        Today
+                      </Badge>
+                    )}
+                  </div>
+                  <CardTitle className="text-base">{formatDate(day)}</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 space-y-2">
+                  {dayShifts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Off</p>
+                  ) : (
+                    dayShifts.map((shift) => {
+                      const overnight = isOvernightShift(shift.startTime, shift.endTime);
+                      return (
+                        <div
+                          key={shift.id}
+                          className="bg-primary/10 border border-primary/20 rounded-md p-2 space-y-1"
+                        >
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-medium text-primary">
+                              {formatTime(Number(shift.startTime))} –{' '}
+                              {formatTime(Number(shift.endTime))}
+                            </span>
+                            {overnight && (
+                              <Moon className="h-3 w-3 text-primary ml-auto" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {shift.department}
+                          </p>
+                        </div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

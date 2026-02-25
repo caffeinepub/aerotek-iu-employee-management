@@ -1,22 +1,17 @@
-
-import Array "mo:core/Array";
-import Iter "mo:core/Iter";
-import List "mo:core/List";
-import Order "mo:core/Order";
-import Time "mo:core/Time";
+import Map "mo:core/Map";
 import Runtime "mo:core/Runtime";
+import Text "mo:core/Text";
+import List "mo:core/List";
+import Iter "mo:core/Iter";
+import Array "mo:core/Array";
+import Order "mo:core/Order";
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Map "mo:core/Map";
 
-import Principal "mo:core/Principal";
-import Text "mo:core/Text";
-
-// Fix for Issue #4300 (Canister initialization trap at commit e32e6d42 on June 3, 2024)
+// Ensure migration is applied on upgrade
 
 actor {
-  // Authorization Mixin
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -174,6 +169,7 @@ actor {
     startTime : Text;
     endTime : Text;
     hoursWorked : Float;
+    buildingNumber : ?Text;
   };
 
   public type Timesheet = {
@@ -233,7 +229,6 @@ actor {
   // Call once at initialization and on each upgrade
   ensureHardcodedAdmins();
 
-  // Helper: get the Role of the caller from the users map via principalToUsername
   func getCallerRole(caller : Principal) : ?Role {
     switch (principalToUsername.get(caller)) {
       case (null) { null };
@@ -246,9 +241,6 @@ actor {
     };
   };
 
-  // Helper: check if caller is an hrAdmin or manager (for operations permitted to both)
-  // Supervisors are intentionally excluded from write operations like creating employees,
-  // job postings, hiring applicants, and terminating/deactivating employees.
   func isHRAdminOrManager(caller : Principal) : Bool {
     if (AccessControl.hasPermission(accessControlState, caller, #admin)) {
       return true;
@@ -265,9 +257,6 @@ actor {
     };
   };
 
-  // Helper: check if caller is an hrAdmin, manager, or supervisor
-  // Used only for READ operations (view schedules, view time-off requests, view applicants)
-  // and for approve/deny time-off requests (supervisors are explicitly allowed per spec).
   func isHRAdminOrManagerOrSupervisor(caller : Principal) : Bool {
     if (AccessControl.hasPermission(accessControlState, caller, #admin)) {
       return true;
@@ -285,7 +274,6 @@ actor {
     };
   };
 
-  // Helper: check if caller is an hrAdmin (app-level)
   func isHRAdmin(caller : Principal) : Bool {
     if (AccessControl.hasPermission(accessControlState, caller, #admin)) {
       return true;
@@ -301,7 +289,6 @@ actor {
     };
   };
 
-  // Helper: check if caller is authenticated (has a session)
   func isAuthenticated(caller : Principal) : Bool {
     if (AccessControl.hasPermission(accessControlState, caller, #user)) {
       return true;
@@ -312,17 +299,12 @@ actor {
     };
   };
 
-  // Helper: determine if a shift is visible to the caller based on its status.
-  // Draft shifts are only visible to HR Admins and Managers.
-  // Published shifts are visible to all authenticated users.
   func isShiftVisibleToCaller(shift : Shift, caller : Principal) : Bool {
     switch (shift.status) {
       case (#published) { true };
       case (#draft) { isHRAdminOrManager(caller) };
     };
   };
-
-  // ===== UserProfile Functions (required by frontend) =====
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not isAuthenticated(caller)) {
@@ -345,13 +327,10 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // ===== User Authentication =====
-
   public shared ({ caller }) func login(username : Text, passwordHash : Text) : async ?UserProfile {
     switch (users.get(username)) {
       case (null) { null };
       case (?user) {
-        // Case-sensitive credential matching
         if (user.passwordHash == passwordHash and user.username == username and user.active) {
           principalToUsername.add(caller, username);
           let profile : UserProfile = {
@@ -435,10 +414,9 @@ actor {
     };
   };
 
-  // ===== Timesheet Management =====
+  // ===== Timesheets Management =====
 
   public shared ({ caller }) func submitTimesheet(timesheet : Timesheet) : async ServiceResult<Text> {
-    // Employees only can submit timesheets
     switch (getCallerRole(caller)) {
       case (?#employee) {
         timesheets.add(timesheet.id, { timesheet with status = #submitted });
@@ -451,7 +429,6 @@ actor {
   };
 
   public query ({ caller }) func getTimesheets() : async [Timesheet] {
-    // HR Admin (view all), Manager (department/team), Employee (self)
     switch (getCallerRole(caller)) {
       case (?role) {
         switch (role) {
@@ -459,7 +436,6 @@ actor {
             timesheets.values().toArray();
           };
           case (#manager) {
-            // Only return manager's department or team timesheets
             let callerManagerId = switch (userProfiles.get(caller)) {
               case (?profile) { ?profile.username };
               case (null) { null };
@@ -568,12 +544,6 @@ actor {
     };
   };
 
-  // ===== Employee Management Functions =====
-
-  // createEmployee: HR Admins and Managers can create employees.
-  // Supervisors cannot add new employees.
-  // This legacy endpoint creates only the employee profile (no account).
-  // Prefer createEmployeeWithAccount for atomic creation.
   public shared ({ caller }) func createEmployee(profile : Employee) : async () {
     if (not isHRAdminOrManager(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can create employees");
@@ -581,19 +551,12 @@ actor {
     employees.add(profile.id, profile);
   };
 
-  // createEmployeeWithAccount: Atomically creates both an Employee and a login account.
-  // Required fields: profile (Employee), username, passwordHash, displayName.
-  // Returns an error (via trap) if the username is already taken or required fields are missing.
-  // Only HR Admins and Managers can call this endpoint.
-  // Managers follow the same role restriction as createAccount: cannot assign #hrAdmin or #supervisor.
   public shared ({ caller }) func createEmployeeWithAccount(input : CreateEmployeeWithAccountInput) : async () {
     if (isHRAdmin(caller)) {
-      // HR Admin can assign any role — no restriction
     } else if (isHRAdminOrManager(caller)) {
-      // Manager: may only assign #employee or #manager to the new account
       switch (input.profile.role) {
-        case (#employee) { /* allowed */ };
-        case (#manager) { /* allowed */ };
+        case (#employee) { };
+        case (#manager) { };
         case (#hrAdmin) {
           Runtime.trap("Unauthorized: Managers cannot assign the HR Admin role");
         };
@@ -605,7 +568,6 @@ actor {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can create employees");
     };
 
-    // Validate required fields
     if (input.username.size() == 0) {
       Runtime.trap("Username is required");
     };
@@ -619,17 +581,14 @@ actor {
       Runtime.trap("Employee full name is required");
     };
 
-    // Check for duplicate username — must fail atomically before creating any record
     if (users.containsKey(input.username)) {
       Runtime.trap("Username already exists: " # input.username);
     };
 
-    // Check for duplicate employee ID
     if (employees.containsKey(input.profile.id)) {
       Runtime.trap("Employee ID already exists: " # input.profile.id);
     };
 
-    // Atomically create both records (Motoko is single-threaded; both writes happen before any await)
     employees.add(
       input.profile.id,
       {
@@ -649,7 +608,6 @@ actor {
       },
     );
 
-    // Store the employeeId -> username mapping for badge-based login
     employeeIdToUsername.add(input.profile.id, input.username);
   };
 
@@ -677,7 +635,6 @@ actor {
     employees.add(id, profile);
   };
 
-  // deactivateEmployee: HR Admins and Managers only. Supervisors cannot deactivate employees.
   public shared ({ caller }) func deactivateEmployee(id : Text) : async () {
     if (not isHRAdminOrManager(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can deactivate employees");
@@ -703,7 +660,6 @@ actor {
     };
   };
 
-  // deleteEmployee: HR Admins and Managers only. Supervisors cannot terminate/delete employees.
   public shared ({ caller }) func deleteEmployee(id : Text) : async ServiceResult<()> {
     if (not isHRAdminOrManager(caller)) {
       return #err("Unauthorized: Only HR Admins or Managers can delete employees");
@@ -712,15 +668,12 @@ actor {
       case (null) { #err("Employee not found: " # id) };
       case (?_) {
         employees.remove(id);
-        // Also clean up the employeeId -> username mapping if present
         employeeIdToUsername.remove(id);
         #ok(());
       };
     };
   };
 
-  // getEmployeeByBadgeId: Any authenticated user may look up an employee by badge ID.
-  // This is a query (read-only) endpoint.
   public query ({ caller }) func getEmployeeByBadgeId(badgeId : Text) : async ServiceResult<Employee> {
     if (not isAuthenticated(caller)) {
       return #err("Unauthorized: Only authenticated users can view employee profiles");
@@ -731,23 +684,17 @@ actor {
     };
   };
 
-  // loginWithBadgeId: No authentication required (this IS the login endpoint).
-  // Looks up the employee by badge ID, finds their linked user account via
-  // the employeeIdToUsername map, and returns session data identical to login().
   public shared ({ caller }) func loginWithBadgeId(badgeId : Text) : async ServiceResult<UserProfile> {
-    // Step 1: Find the employee with this badge ID
     switch (employees.values().find(func(e : Employee) : Bool { e.badgeId == badgeId })) {
       case (null) {
         #err("No employee found with badge ID: " # badgeId);
       };
       case (?emp) {
-        // Step 2: Find the linked username via employeeIdToUsername map
         switch (employeeIdToUsername.get(emp.id)) {
           case (null) {
             #err("No linked user account found for employee: " # emp.id);
           };
           case (?username) {
-            // Step 3: Look up the user account
             switch (users.get(username)) {
               case (null) {
                 #err("User account not found for username: " # username);
@@ -756,7 +703,6 @@ actor {
                 if (not user.active) {
                   return #err("User account is inactive");
                 };
-                // Step 4: Establish session (same as login())
                 principalToUsername.add(caller, username);
                 let profile : UserProfile = {
                   username = user.username;
@@ -772,9 +718,6 @@ actor {
       };
     };
   };
-
-  // ===== Job Postings Management =====
-  // Supervisors cannot create job postings.
 
   public shared ({ caller }) func createJobPosting(posting : JobPosting) : async () {
     if (not isHRAdminOrManager(caller)) {
@@ -807,9 +750,6 @@ actor {
     jobPostings.values().toArray();
   };
 
-  // ===== Applicant Management =====
-  // Supervisors cannot hire applicants or add/update applicant stages.
-
   public shared ({ caller }) func addApplicant(applicant : Applicant) : async () {
     if (not isHRAdminOrManager(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can add applicants");
@@ -838,7 +778,6 @@ actor {
     };
   };
 
-  // Supervisors can view applicants (read-only).
   public query ({ caller }) func getApplicant(id : Text) : async Applicant {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can view applicant details");
@@ -863,13 +802,6 @@ actor {
     applicants.values().toArray().filter(func(a : Applicant) : Bool { a.jobPostingId == jobPostingId });
   };
 
-  // ===== Shift Management =====
-  // Supervisors can VIEW published schedules but cannot assign or delete shifts.
-  // Draft shifts are only visible to HR Admins and Managers.
-  // Published shifts are visible to all authenticated users including Employees and Supervisors.
-
-  // assignShift: HR Admins and Managers only. Supervisors cannot assign shifts.
-  // New shifts are created with #draft status by default if not specified.
   public shared ({ caller }) func assignShift(shift : Shift) : async () {
     if (not isHRAdminOrManager(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can assign shifts");
@@ -877,7 +809,6 @@ actor {
     shifts.add(shift.id, shift);
   };
 
-  // deleteShift: HR Admins and Managers only. Supervisors cannot delete shifts.
   public shared ({ caller }) func deleteShift(id : Text) : async () {
     if (not isHRAdminOrManager(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins or Managers can delete shifts");
@@ -885,15 +816,10 @@ actor {
     shifts.remove(id);
   };
 
-  // publishSchedule: Transitions all draft shifts for a given department and week
-  // (identified by a weekStart timestamp) to published status.
-  // Only HR Admins and Managers can publish schedules.
   public shared ({ caller }) func publishSchedule(department : Text, weekStart : Int) : async ServiceResult<Nat> {
     if (not isHRAdminOrManager(caller)) {
       return #err("Unauthorized: Only HR Admins or Managers can publish schedules");
     };
-    // weekStart is the start of the week (e.g., Monday 00:00 UTC in nanoseconds).
-    // weekEnd is 7 days later.
     let weekEnd = weekStart + 7 * 24 * 60 * 60 * 1_000_000_000;
     var count = 0;
     for ((id, shift) in shifts.entries()) {
@@ -910,9 +836,6 @@ actor {
     #ok(count);
   };
 
-  // unpublishSchedule: Reverts all published shifts for a given department and week
-  // back to draft status.
-  // Only HR Admins and Managers can unpublish schedules.
   public shared ({ caller }) func unpublishSchedule(department : Text, weekStart : Int) : async ServiceResult<Nat> {
     if (not isHRAdminOrManager(caller)) {
       return #err("Unauthorized: Only HR Admins or Managers can unpublish schedules");
@@ -961,16 +884,11 @@ actor {
     };
   };
 
-  // getAllShiftsForEmployee: Returns shifts for a given employee.
-  // - HR Admins and Managers can see all shifts (draft and published).
-  // - Supervisors can only see published shifts.
-  // - Regular employees can only see their own published shifts.
   public query ({ caller }) func getAllShiftsForEmployee(employeeId : Text) : async [Shift] {
     if (not isAuthenticated(caller)) {
       Runtime.trap("Unauthorized: Only authenticated users can view shifts");
     };
 
-    // Employees can only view their own shifts
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       switch (userProfiles.get(caller)) {
         case (null) { Runtime.trap("Unauthorized: No profile found for caller") };
@@ -987,7 +905,6 @@ actor {
       };
     };
 
-    // Filter by employeeId and apply draft visibility rules
     shifts.values().toArray().filter(
       func(shift : Shift) : Bool {
         shift.employeeId == employeeId and isShiftVisibleToCaller(shift, caller)
@@ -995,9 +912,6 @@ actor {
     );
   };
 
-  // getAllShiftsForDepartment: Returns shifts for a given department.
-  // - HR Admins and Managers can see all shifts (draft and published).
-  // - Supervisors can only see published shifts.
   public query ({ caller }) func getAllShiftsForDepartment(department : Text) : async [Shift] {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can view department shifts");
@@ -1009,9 +923,6 @@ actor {
     );
   };
 
-  // getAvailableShifts: Returns shifts for a given department.
-  // - HR Admins and Managers can see all shifts (draft and published).
-  // - All other authenticated users (supervisors, employees) can only see published shifts.
   public query ({ caller }) func getAvailableShifts(dep : Text) : async [Shift] {
     if (not isAuthenticated(caller)) {
       Runtime.trap("Unauthorized: Only authenticated users can view available shifts");
@@ -1023,15 +934,42 @@ actor {
     );
   };
 
-  // ===== Time Off Requests Management =====
-  // Supervisors can approve or deny time-off requests with a comment.
-  // Supervisors can view all time-off requests.
+  public query ({ caller }) func getShifts() : async [Shift] {
+    if (not isAuthenticated(caller)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view shifts");
+    };
+
+    switch (getCallerRole(caller)) {
+      case (?#employee) {
+        shifts.values().toArray().filter(
+          func(shift : Shift) : Bool {
+            shift.status == #published;
+          }
+        );
+      };
+      case (?#supervisor) {
+        shifts.values().toArray().filter(
+          func(shift : Shift) : Bool {
+            shift.status == #published;
+          }
+        );
+      };
+      case (?#hrAdmin) {
+        shifts.values().toArray();
+      };
+      case (?#manager) {
+        shifts.values().toArray();
+      };
+      case (null) {
+        Runtime.trap("Unauthorized: User role not found");
+      };
+    };
+  };
 
   public shared ({ caller }) func submitTimeOffRequest(request : TimeOffRequest) : async () {
     if (not isAuthenticated(caller)) {
       Runtime.trap("Unauthorized: Only authenticated users can submit time-off requests");
     };
-    // Non-admin/manager employees can only submit for themselves
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       switch (userProfiles.get(caller)) {
         case (null) { Runtime.trap("Unauthorized: No profile found for caller") };
@@ -1055,7 +993,6 @@ actor {
     };
   };
 
-  // approveTimeOffRequest: HR Admins, Managers, and Supervisors can approve time-off requests.
   public shared ({ caller }) func approveTimeOffRequest(requestId : Text) : async () {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can approve time off requests");
@@ -1078,7 +1015,6 @@ actor {
     };
   };
 
-  // approveTimeOffRequestWithComment: HR Admins, Managers, and Supervisors can approve with a comment.
   public shared ({ caller }) func approveTimeOffRequestWithComment(requestId : Text, comment : Text) : async () {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can approve time off requests");
@@ -1101,7 +1037,6 @@ actor {
     };
   };
 
-  // denyTimeOffRequest: HR Admins, Managers, and Supervisors can deny time-off requests with a comment.
   public shared ({ caller }) func denyTimeOffRequest(requestId : Text, comments : Text) : async () {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can deny time off requests");
@@ -1128,7 +1063,6 @@ actor {
     if (not isAuthenticated(caller)) {
       Runtime.trap("Unauthorized: Only authenticated users can view time-off requests");
     };
-    // Non-admin/manager/supervisor employees can only view their own requests
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       switch (userProfiles.get(caller)) {
         case (null) { Runtime.trap("Unauthorized: No profile found for caller") };
@@ -1147,16 +1081,12 @@ actor {
     timeOffRequests.values().toArray().filter(func(req : TimeOffRequest) : Bool { req.employeeId == employeeId });
   };
 
-  // getAllTimeOffRequests: Supervisors can view all time-off requests.
   public query ({ caller }) func getAllTimeOffRequests() : async [TimeOffRequest] {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       Runtime.trap("Unauthorized: Only HR Admins, Managers or Supervisors can view all time-off requests");
     };
     timeOffRequests.values().toArray();
   };
-
-  // ===== PTO Balance Management =====
-  // Supervisors cannot add or update PTO balances (write operations restricted to HR Admin/Manager).
 
   public shared ({ caller }) func addPTOBalance(balance : PTOBalance) : async () {
     if (not isHRAdminOrManager(caller)) {
@@ -1176,7 +1106,6 @@ actor {
     if (not isAuthenticated(caller)) {
       Runtime.trap("Unauthorized: Only authenticated users can view PTO balances");
     };
-    // Non-admin/manager/supervisor employees can only view their own balance
     if (not isHRAdminOrManagerOrSupervisor(caller)) {
       switch (userProfiles.get(caller)) {
         case (null) { Runtime.trap("Unauthorized: No profile found for caller") };
@@ -1197,9 +1126,6 @@ actor {
       case (?balance) { balance };
     };
   };
-
-  // ===== PTO Policy Management =====
-  // Supervisors cannot add or update PTO policies (write operations restricted to HR Admin/Manager).
 
   public shared ({ caller }) func addPTOPolicy(policy : PTOPolicy) : async () {
     if (not isHRAdminOrManager(caller)) {
@@ -1231,9 +1157,6 @@ actor {
     };
     ptoPolicies.values().toArray();
   };
-
-  // ===== Org Chart / Role Queries =====
-  // Supervisors can view employees by role (read-only).
 
   public query ({ caller }) func getEmployeesByRole(role : Role) : async [Employee] {
     if (not isHRAdminOrManagerOrSupervisor(caller)) {

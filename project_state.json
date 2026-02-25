@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 25,
+  "projectStateVersion": 35,
   "summary": "Building 'Aerotek (IU) Employee Management' — a comprehensive HR platform with hiring, staff management, scheduling, time off, and PTO policy features. Login-only access (no sign-up). Roles for HR personnel, managers, supervisors, and employees. HR Admin can set user roles (Manager, Supervisor, Employee). Managers and HR Admins can create employees with login credentials. Supervisors can view schedules and approve time off but cannot hire, add, or terminate employees. Pre-configured admin logins: richaadi0 / 3vtpxdgf and Adirich / 3vtpxdgf.",
   "architectural_notes": [
     "Login-only platform — no public sign-up; accounts created by HR admin only",
@@ -11,13 +11,17 @@
     "Staff ID badge login: scanned badge ID number must match employee profile ID field to authenticate and redirect to employee dashboard",
     "Shifts support overnight hours — end time can be before start time (e.g., 22:00–06:30 spans midnight)",
     "Employee records require a direct manager assignment (enforced by HR Admin); manager's own manager field shows 'Human Resources'",
-    "Timesheet workflow: Employee submits → Manager approves/denies → HR Admin gives final approval/denial (two-stage)"
+    "Timesheet workflow: Employee submits → Manager approves/denies → HR Admin gives final approval/denial (two-stage)",
+    "Work week starts on Sunday (not Monday) — applies to all scheduling, timesheet, and calendar views"
   ],
   "known_issues": [
     "Login system has errors preventing account creation and authentication — requires fix",
     "Pre-seeded admin accounts (richaadi0, Adirich) are denied login access — auth validation not recognizing seeded credentials",
     "App shows 'Something went wrong' error on startup — likely a runtime initialization crash",
-    "Staff management page errors/crashes when clicking 'Add Staff' button"
+    "Staff management page errors/crashes when clicking 'Add Staff' button",
+    "Employees/staff cannot see published schedules — published shift visibility for employee role is broken",
+    "Timesheet submission errors when employee tries to submit — system requires employee ID that should be derived from session",
+    "Manager-to-HR timesheet submission errors with 'needs employee ID' message"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -386,6 +390,110 @@
       "title": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
       "reqIds": [
         "REQ-79"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-frontend-src-pages-employee-employeeschedulepage-tsx-and-frontend-src-pages-employee-employeedashboard-tsx-so-they-fetch-and-display-only-published-shifts-set-the-react-query-staletime-to-0-on-the-shifts-query-in-both-pages-so-data-is-always-refetched-on-mount-add-a-polling-interval-of-30-seconds-so-newly-published-shifts-appear-automatically-without-a-manual-page-reload",
+      "title": "Fix `frontend/src/pages/employee/EmployeeSchedulePage.tsx` and `frontend/src/pages/employee/EmployeeDashboard.tsx` so they fetch and display only published shifts. Set the React Query `staleTime` to 0 on the shifts query in both pages so data is always refetched on mount. Add a polling interval of 30 seconds so newly published shifts appear automatically without a manual page reload.",
+      "reqIds": [
+        "REQ-83"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-all-typescript-compilation-errors-across-the-frontend-that-prevent-a-successful-build-resolve-type-mismatches-on-the-directmanagerid-field-employee-type-schedulestatus-field-shift-type-and-all-timesheet-related-types-in-usequeries-ts-employeetimesheetpage-tsx-managertimesheetpage-tsx-hrtimesheetpage-tsx-scheduling-pages-and-employee-management-pages-the-project-must-build-with-zero-typescript-errors",
+      "title": "Fix all TypeScript compilation errors across the frontend that prevent a successful build. Resolve type mismatches on the `directManagerId` field (Employee type), `scheduleStatus` field (Shift type), and all Timesheet-related types in `useQueries.ts`, `EmployeeTimesheetPage.tsx`, `ManagerTimesheetPage.tsx`, `HRTimesheetPage.tsx`, scheduling pages, and employee management pages. The project must build with zero TypeScript errors.",
+      "reqIds": [
+        "REQ-84"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-all-react-query-hooks-in-frontend-src-hooks-usequeries-ts-to-guard-against-null-undefined-actor-state-before-calling-any-backend-method-ensure-every-mutation-correctly-maps-motoko-ok-err-response-variants-to-resolved-rejected-promise-states-this-applies-to-all-hooks-including-usetimesheets-usesubmittimesheet-usemanagerreviewtimesheet-usehrreviewtimesheet-usedeleteemployee-useloginwithbadgeid-usecreateemployeewithaccount-publishschedule-and-unpublishschedule-hooks",
+      "title": "Audit and fix all React Query hooks in `frontend/src/hooks/useQueries.ts` to guard against null/undefined actor state before calling any backend method. Ensure every mutation correctly maps Motoko `#ok`/`#err` response variants to resolved/rejected Promise states. This applies to all hooks including `useTimesheets`, `useSubmitTimesheet`, `useManagerReviewTimesheet`, `useHrReviewTimesheet`, `useDeleteEmployee`, `useLoginWithBadgeId`, `useCreateEmployeeWithAccount`, `publishSchedule`, and `unpublishSchedule` hooks.",
+      "reqIds": [
+        "REQ-85"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeeschedulepage-tsx-ensure-the-shifts-query-filters-results-to-only-include-shifts-where-schedulestatus-published-or-the-equivalent-published-variant-set-react-query-staletime-to-0-and-add-a-refetchinterval-of-30000-30-seconds-on-the-shifts-query-so-newly-published-shifts-appear-automatically-without-a-manual-page-reload",
+      "title": "In `frontend/src/pages/employee/EmployeeSchedulePage.tsx`, ensure the shifts query filters results to only include shifts where `scheduleStatus === '#published'` (or the equivalent published variant). Set React Query `staleTime` to 0 and add a `refetchInterval` of 30000 (30 seconds) on the shifts query so newly published shifts appear automatically without a manual page reload.",
+      "reqIds": [
+        "REQ-86"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeedashboard-tsx-ensure-the-upcoming-shifts-section-filters-results-to-only-include-shifts-where-schedulestatus-published-set-react-query-staletime-to-0-and-add-a-refetchinterval-of-30000-on-the-shifts-query-so-newly-published-shifts-appear-automatically",
+      "title": "In `frontend/src/pages/employee/EmployeeDashboard.tsx`, ensure the upcoming shifts section filters results to only include shifts where `scheduleStatus === '#published'`. Set React Query `staleTime` to 0 and add a `refetchInterval` of 30000 on the shifts query so newly published shifts appear automatically.",
+      "reqIds": [
+        "REQ-87"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-hooks-usequeries-ts-update-the-shifts-query-hook-e-g-usegetshiftsfordepartment-or-useshifts-used-by-employee-facing-pages-to-set-staletime-0-and-refetchinterval-30000-guard-against-null-undefined-actor-state-before-calling-the-backend-shift-endpoint",
+      "title": "In `frontend/src/hooks/useQueries.ts`, update the shifts query hook (e.g., `useGetShiftsForDepartment` or `useShifts`) used by employee-facing pages to set `staleTime: 0` and `refetchInterval: 30000`. Guard against null/undefined actor state before calling the backend shift endpoint.",
+      "reqIds": [
+        "REQ-89"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeeschedulepage-tsx-update-the-weekly-calendar-grid-so-that-the-work-week-starts-on-sunday-sunday-through-saturday-update-all-date-arithmetic-week-start-calculations-and-day-column-headers-accordingly",
+      "title": "In `frontend/src/pages/employee/EmployeeSchedulePage.tsx`, update the weekly calendar grid so that the work week starts on Sunday (Sunday through Saturday). Update all date arithmetic, week-start calculations, and day-column headers accordingly.",
+      "reqIds": [
+        "REQ-92"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeetimesheetpage-tsx-update-the-weekly-timesheet-table-so-that-the-work-week-starts-on-sunday-sunday-through-saturday-instead-of-monday-through-sunday-the-week-selector-s-current-week-default-and-all-week-boundary-calculations-must-use-sunday-as-the-first-day-of-the-week",
+      "title": "In `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`, update the weekly timesheet table so that the work week starts on Sunday (Sunday through Saturday) instead of Monday through Sunday. The week selector's current-week default and all week boundary calculations must use Sunday as the first day of the week.",
+      "reqIds": [
+        "REQ-94"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeetimesheetpage-tsx-add-a-building-text-input-field-in-each-day-row-positioned-immediately-after-to-the-right-of-the-end-time-input-this-field-accepts-a-building-number-or-identifier-the-building-number-value-must-be-included-in-each-day-entry-when-the-timesheet-is-submitted",
+      "title": "In `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`, add a 'Building #' text input field in each day row, positioned immediately after (to the right of) the end time input. This field accepts a building number or identifier. The building number value must be included in each day entry when the timesheet is submitted.",
+      "reqIds": [
+        "REQ-96"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-employee-employeetimesheetpage-tsx-implement-an-automatic-30-minute-unpaid-break-deduction-rule-for-each-day-row-where-the-calculated-raw-shift-duration-is-8-5-hours-510-minutes-or-more-subtract-0-5-hours-30-minutes-from-the-displayed-and-submitted-hoursworked-value-for-that-day-for-example-a-shift-entered-as-8h-30m-raw-calculates-to-8-0-hours-paid-a-shift-of-9h-0m-raw-calculates-to-8-5-hours-paid-shifts-under-8-5-hours-raw-are-not-deducted-display-the-deducted-paid-hours-in-the-auto-calculated-hours-column-for-each-row-show-a-small-informational-note-near-the-total-hours-display-e-g-30-min-unpaid-break-deducted-for-shifts-8h-30m-so-employees-understand-the-rule",
+      "title": "In `frontend/src/pages/employee/EmployeeTimesheetPage.tsx`, implement an automatic 30-minute unpaid break deduction rule: for each day row where the calculated raw shift duration is 8.5 hours (510 minutes) or more, subtract 0.5 hours (30 minutes) from the displayed and submitted `hoursWorked` value for that day. For example: a shift entered as 8h 30m raw calculates to 8.0 hours paid; a shift of 9h 0m raw calculates to 8.5 hours paid. Shifts under 8.5 hours raw are not deducted. Display the deducted (paid) hours in the auto-calculated hours column for each row. Show a small informational note near the total hours display (e.g., '* 30-min unpaid break deducted for shifts ≥ 8h 30m') so employees understand the rule.",
+      "reqIds": [
+        "REQ-98"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-frontend-src-pages-employee-employeetimesheetpage-tsx-with-a-modern-calendar-style-layout-replace-the-plain-table-rows-with-a-7-column-weekly-calendar-grid-sunday-saturday-where-each-day-is-a-card-showing-the-day-name-date-start-time-input-end-time-input-building-input-and-auto-calculated-paid-hours-apply-the-dark-navy-amber-theme-with-card-elevation-subtle-borders-and-clean-typography-the-layout-must-feel-uncluttered-use-whitespace-clear-section-headers-and-visually-distinct-day-cards-the-running-total-hours-display-and-break-deduction-note-should-appear-in-a-summary-bar-below-the-calendar-the-submit-timesheet-button-should-be-prominently-placed-and-styled-previously-submitted-timesheets-should-appear-in-a-clean-card-list-below-with-status-badges",
+      "title": "Redesign `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` with a modern calendar-style layout. Replace the plain table rows with a 7-column weekly calendar grid (Sunday–Saturday) where each day is a card showing the day name, date, start time input, end time input, Building # input, and auto-calculated paid hours. Apply the dark navy/amber theme with card elevation, subtle borders, and clean typography. The layout must feel uncluttered — use whitespace, clear section headers, and visually distinct day cards. The running total hours display and break deduction note should appear in a summary bar below the calendar. The 'Submit Timesheet' button should be prominently placed and styled. Previously submitted timesheets should appear in a clean card list below with status badges.",
+      "reqIds": [
+        "REQ-99"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-timesheet-submission-error-in-frontend-src-pages-employee-employeetimesheetpage-tsx-and-the-usesubmittimesheet-mutation-in-frontend-src-hooks-usequeries-ts-so-that-the-employee-id-is-automatically-derived-from-the-authenticated-session-via-authcontext-rather-than-requiring-manual-input-or-causing-an-error-when-not-present-the-submittimesheet-call-must-pass-the-employeeid-from-the-session-context-without-any-user-facing-prompt-for-it-if-employeeid-is-not-available-in-the-session-display-a-clear-inline-warning-your-account-is-not-linked-to-an-employee-profile-instead-of-an-unhandled-error",
+      "title": "Fix the timesheet submission error in `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` and the `useSubmitTimesheet` mutation in `frontend/src/hooks/useQueries.ts` so that the employee ID is automatically derived from the authenticated session (via `AuthContext`) rather than requiring manual input or causing an error when not present. The `submitTimesheet` call must pass the `employeeId` from the session context without any user-facing prompt for it. If `employeeId` is not available in the session, display a clear inline warning ('Your account is not linked to an employee profile') instead of an unhandled error.",
+      "reqIds": [
+        "REQ-100"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-error-that-occurs-when-a-manager-submits-a-timesheet-review-to-hr-in-frontend-src-pages-manager-managertimesheetpage-tsx-and-the-usemanagerreviewtimesheet-mutation-in-frontend-src-hooks-usequeries-ts-investigate-the-needs-employee-id-error-ensure-the-mutation-payload-includes-all-required-fields-timesheet-id-approved-boolean-comment-and-does-not-inadvertently-require-or-mispass-an-employee-id-ensure-the-mutation-correctly-maps-ok-err-backend-response-variants-to-resolved-rejected-promise-states-and-that-the-actor-is-non-null-before-the-call-is-made",
+      "title": "Fix the error that occurs when a Manager submits a timesheet review to HR in `frontend/src/pages/manager/ManagerTimesheetPage.tsx` and the `useManagerReviewTimesheet` mutation in `frontend/src/hooks/useQueries.ts`. Investigate the 'needs employee ID' error: ensure the mutation payload includes all required fields (timesheet ID, approved boolean, comment) and does not inadvertently require or mispass an employee ID. Ensure the mutation correctly maps `#ok`/`#err` backend response variants to resolved/rejected Promise states and that the actor is non-null before the call is made.",
+      "reqIds": [
+        "REQ-101"
       ],
       "version": 1
     }
@@ -804,6 +912,102 @@
       "summary": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
       "reqIds": [
         "REQ-80"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-73",
+      "summary": "Audit and fix all Motoko compilation and runtime errors in `backend/main.mo`. Ensure all type definitions (Employee with `directManagerId`, Shift with `scheduleStatus`, Timesheet with all fields) are consistent and non-conflicting. Verify that all stable variable declarations are valid, all pre-seeded accounts ('richaadi0'/'3vtpxdgf' and 'Adirich'/'3vtpxdgf') are initialized on canister startup, and all post-upgrade hooks execute without trapping. The backend must deploy and respond to queries without any runtime traps.",
+      "reqIds": [
+        "REQ-81"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-74",
+      "summary": "Ensure the `publishSchedule` backend endpoint in `backend/main.mo` correctly transitions all draft shifts for a given department and week to `#published` status, and that the `getShifts` (or equivalent) query correctly returns published shifts to callers with Employee and Supervisor roles. Employees must only see shifts where `scheduleStatus == #published`. HR Admins and Managers must see both draft and published shifts.",
+      "reqIds": [
+        "REQ-82"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-77",
+      "summary": "In `backend/main.mo`, verify that the `getShifts` (or equivalent shift query) endpoint enforces role-based filtering: callers with the `#employee` or `#supervisor` role receive only shifts with `scheduleStatus == #published`; callers with `#hrAdmin` or `#manager` receive both draft and published shifts. If this filtering is not already implemented, add it now.",
+      "reqIds": [
+        "REQ-88"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-78",
+      "summary": "Change the start of the work week from Monday to Sunday across all scheduling and timesheet views",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-79",
+      "summary": "In `frontend/src/pages/hr/SchedulingPage.tsx`, update the weekly calendar grid so that the work week starts on Sunday (Sunday through Saturday) instead of Monday through Sunday. Update all date arithmetic, week-start calculations, and day-column headers to reflect a Sunday-first work week.",
+      "reqIds": [
+        "REQ-90"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-80",
+      "summary": "In `frontend/src/pages/manager/ManagerSchedulingPage.tsx`, update the weekly calendar grid so that the work week starts on Sunday (Sunday through Saturday) instead of Monday through Sunday. Update all date arithmetic, week-start calculations, and day-column headers accordingly.",
+      "reqIds": [
+        "REQ-91"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-82",
+      "summary": "In `frontend/src/pages/supervisor/SupervisorSchedulePage.tsx`, update the weekly calendar grid so that the work week starts on Sunday (Sunday through Saturday). Update all date arithmetic, week-start calculations, and day-column headers accordingly.",
+      "reqIds": [
+        "REQ-93"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-84",
+      "summary": "If any shared date utility functions in `frontend/src/lib/utils.ts` or similar shared files compute the start of the week (e.g., a `getWeekStart` or equivalent helper), update them to use Sunday (day index 0) as the start of the week instead of Monday (day index 1), so all scheduling and timesheet pages remain consistent.",
+      "reqIds": [
+        "REQ-95"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-85",
+      "summary": "In the employee timesheet entry form, add a 'Building Number' input field next to the end time field for each day row. Additionally, apply an automatic 30-minute unpaid break deduction: if an employee's total shift hours for a day are 8.5 hours or more, subtract 30 minutes from the calculated hours for that day (so 8h30m entry = 8.0 hours paid, 9h entry = 8.5 hours paid, etc.).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-87",
+      "summary": "Update the `Timesheet` entry data type in `backend/main.mo` to include an optional `buildingNumber` field (Text) on each daily entry record, so building number data submitted from the frontend is persisted.",
+      "reqIds": [
+        "REQ-97"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-88",
+      "summary": "Redesign the employee timesheet page to use a calendar-like layout — cleaner, modern, non-cluttered UI with improved visual formatting.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-89",
+      "summary": "Fix timesheet submission errors: employees should be able to submit timesheets without requiring manual employee ID entry — employee ID must be derived automatically from the logged-in session. Also fix the error when manager submits timesheet review to HR.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-93",
+      "summary": "Audit and fix the backend `submitTimesheet` endpoint in `backend/main.mo` to accept and store the `employeeId` from the timesheet record payload rather than requiring it to be derived from a caller principal that may not be linked. Ensure the `managerReviewTimesheet` endpoint does not require an `employeeId` parameter beyond the timesheet ID, approved boolean, and optional comment. Verify that both endpoints return well-formed `#ok`/`#err` variants and do not trap on missing optional fields.",
+      "reqIds": [
+        "REQ-102"
       ],
       "status": "pending"
     }

@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-crash-error-in-frontend-src-pages-hr-addemployeepage-tsx-that-occurs-when-the-hr-admin-clicks-the-add-staff-button-on-the-staff-management-page-investigate-and-resolve-all-runtime-errors-including-null-undefined-actor-access-before-initialization-type-mismatches-on-the-directmanagerid-field-or-manager-dropdown-data-missing-or-broken-form-field-bindings-unhandled-promise-rejections-from-the-createemployeewithaccount-or-equivalent-mutation-and-any-broken-imports-or-missing-component-references-the-form-must-open-and-render-without-errors-all-fields-including-the-direct-manager-dropdown-and-username-password-fields-must-populate-correctly-and-submission-must-complete-without-throwing-an-unhandled-exception",
-      "featureTitle": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
+      "featureId": "feature-redesign-frontend-src-pages-employee-employeetimesheetpage-tsx-with-a-modern-calendar-style-layout-replace-the-plain-table-rows-with-a-7-column-weekly-calendar-grid-sunday-saturday-where-each-day-is-a-card-showing-the-day-name-date-start-time-input-end-time-input-building-input-and-auto-calculated-paid-hours-apply-the-dark-navy-amber-theme-with-card-elevation-subtle-borders-and-clean-typography-the-layout-must-feel-uncluttered-use-whitespace-clear-section-headers-and-visually-distinct-day-cards-the-running-total-hours-display-and-break-deduction-note-should-appear-in-a-summary-bar-below-the-calendar-the-submit-timesheet-button-should-be-prominently-placed-and-styled-previously-submitted-timesheets-should-appear-in-a-clean-card-list-below-with-status-badges",
+      "featureTitle": "Redesign `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` with a modern calendar-style layout. Replace the plain table rows with a 7-column weekly calendar grid (Sunday–Saturday) where each day is a card showing the day name, date, start time input, end time input, Building # input, and auto-calculated paid hours. Apply the dark navy/amber theme with card elevation, subtle borders, and clean typography. The layout must feel uncluttered — use whitespace, clear section headers, and visually distinct day cards. The running total hours display and break deduction note should appear in a summary bar below the calendar. The 'Submit Timesheet' button should be prominently placed and styled. Previously submitted timesheets should appear in a clean card list below with status badges.",
       "files": [
-        "frontend/src/pages/hr/AddEmployeePage.tsx"
+        "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,7 +18,51 @@
         "qr-code@1.0.0"
       ],
       "testIds": [
-        "REQ-79"
+        "REQ-99"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-timesheet-submission-error-in-frontend-src-pages-employee-employeetimesheetpage-tsx-and-the-usesubmittimesheet-mutation-in-frontend-src-hooks-usequeries-ts-so-that-the-employee-id-is-automatically-derived-from-the-authenticated-session-via-authcontext-rather-than-requiring-manual-input-or-causing-an-error-when-not-present-the-submittimesheet-call-must-pass-the-employeeid-from-the-session-context-without-any-user-facing-prompt-for-it-if-employeeid-is-not-available-in-the-session-display-a-clear-inline-warning-your-account-is-not-linked-to-an-employee-profile-instead-of-an-unhandled-error",
+      "featureTitle": "Fix the timesheet submission error in `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` and the `useSubmitTimesheet` mutation in `frontend/src/hooks/useQueries.ts` so that the employee ID is automatically derived from the authenticated session (via `AuthContext`) rather than requiring manual input or causing an error when not present. The `submitTimesheet` call must pass the `employeeId` from the session context without any user-facing prompt for it. If `employeeId` is not available in the session, display a clear inline warning ('Your account is not linked to an employee profile') instead of an unhandled error.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-100"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-error-that-occurs-when-a-manager-submits-a-timesheet-review-to-hr-in-frontend-src-pages-manager-managertimesheetpage-tsx-and-the-usemanagerreviewtimesheet-mutation-in-frontend-src-hooks-usequeries-ts-investigate-the-needs-employee-id-error-ensure-the-mutation-payload-includes-all-required-fields-timesheet-id-approved-boolean-comment-and-does-not-inadvertently-require-or-mispass-an-employee-id-ensure-the-mutation-correctly-maps-ok-err-backend-response-variants-to-resolved-rejected-promise-states-and-that-the-actor-is-non-null-before-the-call-is-made",
+      "featureTitle": "Fix the error that occurs when a Manager submits a timesheet review to HR in `frontend/src/pages/manager/ManagerTimesheetPage.tsx` and the `useManagerReviewTimesheet` mutation in `frontend/src/hooks/useQueries.ts`. Investigate the 'needs employee ID' error: ensure the mutation payload includes all required fields (timesheet ID, approved boolean, comment) and does not inadvertently require or mispass an employee ID. Ensure the mutation correctly maps `#ok`/`#err` backend response variants to resolved/rejected Promise states and that the actor is non-null before the call is made.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/manager/ManagerTimesheetPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "camera@1.0.0",
+        "qr-code@1.0.0"
+      ],
+      "testIds": [
+        "REQ-101"
       ],
       "confidence": "high"
     }

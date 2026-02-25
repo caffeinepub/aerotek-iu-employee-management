@@ -125,6 +125,7 @@ export interface TimesheetEntry {
   'endTime' : string,
   'date' : string,
   'hoursWorked' : number,
+  'buildingNumber' : [] | [string],
 }
 export type TimesheetStatus = { 'managerApproved' : null } |
   { 'submitted' : null } |
@@ -181,6 +182,7 @@ export interface _SERVICE {
   'getJobPosting' : ActorMethod<[string], JobPosting>,
   'getPTOBalance' : ActorMethod<[string], PTOBalance>,
   'getPTOPolicy' : ActorMethod<[string], PTOPolicy>,
+  'getShifts' : ActorMethod<[], Array<Shift>>,
   'getTimesheets' : ActorMethod<[], Array<Timesheet>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'hasConflictingShift' : ActorMethod<[Shift], boolean>,

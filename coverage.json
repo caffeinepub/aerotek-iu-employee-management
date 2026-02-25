@@ -1,43 +1,72 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T01:54:41.285Z",
+  "generatedAt": "2026-02-25T10:44:39.870Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 1,
+    "total": 4,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-79",
-        "summary": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
+        "id": "REQ-100",
+        "summary": "Fix the timesheet submission error in `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` and the `useSubmitTimesheet` mutation in `frontend/src/hooks/useQueries.ts` so that the employee ID is automatically derived from the authenticated session (via `AuthContext`) rather than requiring manual input or causing an error when not present. The `submitTimesheet` call must pass the `employeeId` from the session context without any user-facing prompt for it. If `employeeId` is not available in the session, display a clear inline warning ('Your account is not linked to an employee profile') instead of an unhandled error.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/hr/AddEmployeePage.tsx"
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/hr/AddEmployeePage.tsx"
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
-        "id": "REQ-80",
-        "summary": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
-        "status": "missing",
+        "id": "REQ-101",
+        "summary": "Fix the error that occurs when a Manager submits a timesheet review to HR in `frontend/src/pages/manager/ManagerTimesheetPage.tsx` and the `useManagerReviewTimesheet` mutation in `frontend/src/hooks/useQueries.ts`. Investigate the 'needs employee ID' error: ensure the mutation payload includes all required fields (timesheet ID, approved boolean, comment) and does not inadvertently require or mispass an employee ID. Ensure the mutation correctly maps `#ok`/`#err` backend response variants to resolved/rejected Promise states and that the actor is non-null before the call is made.",
+        "status": "implemented",
         "plannedFiles": [
+          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
           "frontend/src/hooks/useQueries.ts"
         ],
+        "matchedFiles": [
+          "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-102",
+        "summary": "Audit and fix the backend `submitTimesheet` endpoint in `backend/main.mo` to accept and store the `employeeId` from the timesheet record payload rather than requiring it to be derived from a caller principal that may not be linked. Ensure the `managerReviewTimesheet` endpoint does not require an `employeeId` parameter beyond the timesheet ID, approved boolean, and optional comment. Verify that both endpoints return well-formed `#ok`/`#err` variants and do not trap on missing optional fields.",
+        "status": "unknown",
+        "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-99",
+        "summary": "Redesign `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` with a modern calendar-style layout. Replace the plain table rows with a 7-column weekly calendar grid (Sunday–Saturday) where each day is a card showing the day name, date, start time input, end time input, Building # input, and auto-calculated paid hours. Apply the dark navy/amber theme with card elevation, subtle borders, and clean typography. The layout must feel uncluttered — use whitespace, clear section headers, and visually distinct day cards. The running total hours display and break deduction note should appear in a summary bar below the calendar. The 'Submit Timesheet' button should be prominently placed and styled. Previously submitted timesheets should appear in a clean card list below with status badges.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/employee/EmployeeTimesheetPage.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/pages/hr/AddEmployeePage.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/index.css",
+    "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+    "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

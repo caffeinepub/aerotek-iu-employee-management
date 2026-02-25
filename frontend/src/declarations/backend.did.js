@@ -138,6 +138,7 @@ export const TimesheetEntry = IDL.Record({
   'endTime' : IDL.Text,
   'date' : IDL.Text,
   'hoursWorked' : IDL.Float64,
+  'buildingNumber' : IDL.Opt(IDL.Text),
 });
 export const Timesheet = IDL.Record({
   'id' : IDL.Text,
@@ -213,6 +214,7 @@ export const idlService = IDL.Service({
   'getJobPosting' : IDL.Func([IDL.Text], [JobPosting], ['query']),
   'getPTOBalance' : IDL.Func([IDL.Text], [PTOBalance], ['query']),
   'getPTOPolicy' : IDL.Func([IDL.Text], [PTOPolicy], ['query']),
+  'getShifts' : IDL.Func([], [IDL.Vec(Shift)], ['query']),
   'getTimesheets' : IDL.Func([], [IDL.Vec(Timesheet)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -374,6 +376,7 @@ export const idlFactory = ({ IDL }) => {
     'endTime' : IDL.Text,
     'date' : IDL.Text,
     'hoursWorked' : IDL.Float64,
+    'buildingNumber' : IDL.Opt(IDL.Text),
   });
   const Timesheet = IDL.Record({
     'id' : IDL.Text,
@@ -451,6 +454,7 @@ export const idlFactory = ({ IDL }) => {
     'getJobPosting' : IDL.Func([IDL.Text], [JobPosting], ['query']),
     'getPTOBalance' : IDL.Func([IDL.Text], [PTOBalance], ['query']),
     'getPTOPolicy' : IDL.Func([IDL.Text], [PTOPolicy], ['query']),
+    'getShifts' : IDL.Func([], [IDL.Vec(Shift)], ['query']),
     'getTimesheets' : IDL.Func([], [IDL.Vec(Timesheet)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],

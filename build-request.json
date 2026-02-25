@@ -1,58 +1,106 @@
 {
   "kind": "build_request",
-  "title": "Fix Staff Management Page crash on 'Add Staff'",
+  "title": "Redesign timesheet as calendar UI and fix submission errors for all roles",
+  "projectName": "Aerotek IU Employee Management",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-79",
-      "text": "Fix the crash/error in `frontend/src/pages/hr/AddEmployeePage.tsx` that occurs when the HR Admin clicks the 'Add Staff' button on the staff management page. Investigate and resolve all runtime errors including: null/undefined actor access before initialization, type mismatches on the `directManagerId` field or manager dropdown data, missing or broken form field bindings, unhandled promise rejections from the `createEmployeeWithAccount` (or equivalent) mutation, and any broken imports or missing component references. The form must open and render without errors, all fields (including the Direct Manager dropdown and Username/Password fields) must populate correctly, and submission must complete without throwing an unhandled exception.",
+      "id": "REQ-99",
+      "text": "Redesign `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` with a modern calendar-style layout. Replace the plain table rows with a 7-column weekly calendar grid (Sunday–Saturday) where each day is a card showing the day name, date, start time input, end time input, Building # input, and auto-calculated paid hours. Apply the dark navy/amber theme with card elevation, subtle borders, and clean typography. The layout must feel uncluttered — use whitespace, clear section headers, and visually distinct day cards. The running total hours display and break deduction note should appear in a summary bar below the calendar. The 'Submit Timesheet' button should be prominently placed and styled. Previously submitted timesheets should appear in a clean card list below with status badges.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "Fix the staff management page when hitting add staff"
+          "Change the timesheet formatting to a calendar like formatting make it cleaner better and make it not culide it's cool and nice looking and modern looking"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking 'Add Staff' on the HR Employees page opens the AddEmployeePage form without any crash or error screen.",
-        "The Direct Manager dropdown populates with active manager-role employees without throwing a runtime error.",
-        "All form fields (name, email, department, role, username, password, directManagerId, etc.) are bound correctly and accept user input.",
-        "Submitting the form with valid data calls the backend employee creation endpoint without an unhandled exception.",
-        "Inline validation errors are shown for empty required fields without crashing.",
-        "A success toast is displayed and the user is navigated back to the employee list on successful submission.",
-        "No TypeScript compilation errors exist in AddEmployeePage.tsx."
+        "The timesheet entry form displays a 7-column calendar grid (Sun–Sat) with one card per day",
+        "Each day card contains start time, end time, Building #, and auto-calculated paid hours fields",
+        "The layout is visually uncluttered with clear spacing between day cards",
+        "The dark navy/amber visual theme is applied consistently throughout the redesigned page",
+        "A summary bar below the calendar shows total paid hours for the week and the break deduction note",
+        "The Submit Timesheet button is prominently styled and accessible",
+        "Previously submitted timesheets are listed below the calendar with status badges",
+        "All existing functionality (break deduction, building number, week navigation) is preserved"
       ]
     },
     {
-      "id": "REQ-80",
-      "text": "In `frontend/src/hooks/useQueries.ts`, audit and fix the mutation hook used by `AddEmployeePage.tsx` (e.g., `useCreateEmployeeWithAccount` or equivalent). Ensure it guards against a null/undefined actor before calling the backend, correctly maps the backend `#ok`/`#err` response variants to resolved/rejected Promise states, and invalidates the employees query cache on success so the employee list refreshes automatically.",
+      "id": "REQ-100",
+      "text": "Fix the timesheet submission error in `frontend/src/pages/employee/EmployeeTimesheetPage.tsx` and the `useSubmitTimesheet` mutation in `frontend/src/hooks/useQueries.ts` so that the employee ID is automatically derived from the authenticated session (via `AuthContext`) rather than requiring manual input or causing an error when not present. The `submitTimesheet` call must pass the `employeeId` from the session context without any user-facing prompt for it. If `employeeId` is not available in the session, display a clear inline warning ('Your account is not linked to an employee profile') instead of an unhandled error.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "Fix the staff management page when hitting add staff"
+          "make it where it doesn't error when a employee try's to submit time sheet to the manager"
         ]
       },
       "acceptanceCriteria": [
-        "The mutation hook does not throw if the actor is null or undefined — it rejects with a descriptive error message instead.",
-        "A backend `#ok` response resolves the Promise and triggers employees query cache invalidation.",
-        "A backend `#err` response rejects the Promise with the error text, which is surfaced to the form as an inline error.",
-        "No unhandled promise rejections occur during the mutation call."
+        "Employees can submit timesheets without any prompt or field for employee ID",
+        "The employeeId is read directly from AuthContext session state and passed to the backend",
+        "If employeeId is missing from the session, a user-friendly inline warning is shown and submission is blocked",
+        "No unhandled promise rejection or console error occurs during timesheet submission",
+        "A success toast is shown on successful submission",
+        "The submitted timesheet appears in the history list with status 'Pending Manager Review'"
+      ]
+    },
+    {
+      "id": "REQ-101",
+      "text": "Fix the error that occurs when a Manager submits a timesheet review to HR in `frontend/src/pages/manager/ManagerTimesheetPage.tsx` and the `useManagerReviewTimesheet` mutation in `frontend/src/hooks/useQueries.ts`. Investigate the 'needs employee ID' error: ensure the mutation payload includes all required fields (timesheet ID, approved boolean, comment) and does not inadvertently require or mispass an employee ID. Ensure the mutation correctly maps `#ok`/`#err` backend response variants to resolved/rejected Promise states and that the actor is non-null before the call is made.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "when manager submits to HR saying it errors and says need employee ID make it work when a employee is just login to there account"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Managers can approve or deny submitted timesheets without receiving an 'employee ID' error",
+        "The useManagerReviewTimesheet mutation sends timesheet ID, approved flag, and comment only — no extra employee ID field required",
+        "The mutation guards against null/undefined actor before calling the backend",
+        "Backend #ok/#err variants are correctly mapped to resolved/rejected Promise states",
+        "A success toast is shown after manager approves or denies a timesheet",
+        "The reviewed timesheet moves from 'Pending Your Review' to 'Reviewed / Processed' immediately after action"
+      ]
+    },
+    {
+      "id": "REQ-102",
+      "text": "Audit and fix the backend `submitTimesheet` endpoint in `backend/main.mo` to accept and store the `employeeId` from the timesheet record payload rather than requiring it to be derived from a caller principal that may not be linked. Ensure the `managerReviewTimesheet` endpoint does not require an `employeeId` parameter beyond the timesheet ID, approved boolean, and optional comment. Verify that both endpoints return well-formed `#ok`/`#err` variants and do not trap on missing optional fields.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "it doesn't error when a employee try's to submit time sheet to the manager",
+          "when manager submits to HR saying it errors and says need employee ID"
+        ]
+      },
+      "acceptanceCriteria": [
+        "submitTimesheet accepts employeeId as part of the timesheet payload and stores it without error",
+        "managerReviewTimesheet accepts only timesheetId, approved (Bool), and optional comment — no separate employeeId parameter",
+        "Both endpoints return #ok on success and #err with a descriptive message on failure",
+        "Neither endpoint traps or panics on valid input",
+        "Existing timesheet records remain queryable after the fix"
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files listed under frontend.immutablePaths.",
-    "Do not alter the backend data model or endpoints unless strictly required to fix a type mismatch causing the frontend crash."
+    "Do not modify any files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "Preserve all existing timesheet functionality: 30-minute break deduction, Building # field, Sunday-first week, week navigation, and status history list",
+    "Maintain the dark navy/amber visual theme throughout the redesigned timesheet page"
   ],
   "nonGoals": [
-    "Adding new fields or features to the Add Staff form beyond what is already specified.",
-    "Changing the visual design or layout of the Add Staff page.",
-    "Fixing unrelated pages or features not involved in the Add Staff flow."
+    "Redesigning the Manager or HR timesheet review pages (only fixing their submission errors)",
+    "Changing the two-stage approval workflow logic",
+    "Adding new timesheet fields beyond what already exists",
+    "Modifying the scheduling calendar pages"
   ],
   "imageRequirements": {
     "required": [],

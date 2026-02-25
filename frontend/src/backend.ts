@@ -108,6 +108,7 @@ export interface TimesheetEntry {
     endTime: string;
     date: string;
     hoursWorked: number;
+    buildingNumber?: string;
 }
 export type ServiceResult_1 = {
     __kind__: "ok";
@@ -295,6 +296,7 @@ export interface backendInterface {
     getJobPosting(id: string): Promise<JobPosting>;
     getPTOBalance(employeeId: string): Promise<PTOBalance>;
     getPTOPolicy(policyId: string): Promise<PTOPolicy>;
+    getShifts(): Promise<Array<Shift>>;
     getTimesheets(): Promise<Array<Timesheet>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     hasConflictingShift(newShift: Shift): Promise<boolean>;
@@ -809,6 +811,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getShifts(): Promise<Array<Shift>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getShifts();
+                return from_candid_vec_n43(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getShifts();
+            return from_candid_vec_n43(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getTimesheets(): Promise<Array<Timesheet>> {
         if (this.processError) {
             try {
@@ -855,14 +871,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.hrReviewTimesheet(arg0, arg1, arg2);
-                return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+                return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.hrReviewTimesheet(arg0, arg1, arg2);
-            return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+            return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -897,55 +913,55 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.loginWithBadgeId(arg0);
-                return from_candid_ServiceResult_2_n67(this._uploadFile, this._downloadFile, result);
+                return from_candid_ServiceResult_2_n70(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.loginWithBadgeId(arg0);
-            return from_candid_ServiceResult_2_n67(this._uploadFile, this._downloadFile, result);
+            return from_candid_ServiceResult_2_n70(this._uploadFile, this._downloadFile, result);
         }
     }
     async managerReviewTimesheet(arg0: string, arg1: boolean, arg2: string): Promise<ServiceResult_1> {
         if (this.processError) {
             try {
                 const result = await this.actor.managerReviewTimesheet(arg0, arg1, arg2);
-                return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+                return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.managerReviewTimesheet(arg0, arg1, arg2);
-            return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+            return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
         }
     }
     async publishSchedule(arg0: string, arg1: bigint): Promise<ServiceResult> {
         if (this.processError) {
             try {
                 const result = await this.actor.publishSchedule(arg0, arg1);
-                return from_candid_ServiceResult_n69(this._uploadFile, this._downloadFile, result);
+                return from_candid_ServiceResult_n72(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.publishSchedule(arg0, arg1);
-            return from_candid_ServiceResult_n69(this._uploadFile, this._downloadFile, result);
+            return from_candid_ServiceResult_n72(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n71(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n74(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n71(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n74(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -966,43 +982,43 @@ export class Backend implements backendInterface {
     async submitTimeOffRequest(arg0: TimeOffRequest): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.submitTimeOffRequest(to_candid_TimeOffRequest_n73(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.submitTimeOffRequest(to_candid_TimeOffRequest_n76(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.submitTimeOffRequest(to_candid_TimeOffRequest_n73(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.submitTimeOffRequest(to_candid_TimeOffRequest_n76(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
     async submitTimesheet(arg0: Timesheet): Promise<ServiceResult_1> {
         if (this.processError) {
             try {
-                const result = await this.actor.submitTimesheet(to_candid_Timesheet_n77(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.submitTimesheet(to_candid_Timesheet_n80(this._uploadFile, this._downloadFile, arg0));
+                return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.submitTimesheet(to_candid_Timesheet_n77(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_ServiceResult_1_n65(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.submitTimesheet(to_candid_Timesheet_n80(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_ServiceResult_1_n68(this._uploadFile, this._downloadFile, result);
         }
     }
     async unpublishSchedule(arg0: string, arg1: bigint): Promise<ServiceResult> {
         if (this.processError) {
             try {
                 const result = await this.actor.unpublishSchedule(arg0, arg1);
-                return from_candid_ServiceResult_n69(this._uploadFile, this._downloadFile, result);
+                return from_candid_ServiceResult_n72(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.unpublishSchedule(arg0, arg1);
-            return from_candid_ServiceResult_n69(this._uploadFile, this._downloadFile, result);
+            return from_candid_ServiceResult_n72(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateApplicantStage(arg0: string, arg1: ApplicantStage): Promise<void> {
@@ -1111,11 +1127,11 @@ function from_candid_JobPosting_n39(_uploadFile: (file: ExternalBlob) => Promise
 function from_candid_Role_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Role): Role {
     return from_candid_variant_n36(_uploadFile, _downloadFile, value);
 }
-function from_candid_ServiceResult_1_n65(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_1): ServiceResult_1 {
-    return from_candid_variant_n66(_uploadFile, _downloadFile, value);
+function from_candid_ServiceResult_1_n68(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_1): ServiceResult_1 {
+    return from_candid_variant_n69(_uploadFile, _downloadFile, value);
 }
-function from_candid_ServiceResult_2_n67(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_2): ServiceResult_2 {
-    return from_candid_variant_n68(_uploadFile, _downloadFile, value);
+function from_candid_ServiceResult_2_n70(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_2): ServiceResult_2 {
+    return from_candid_variant_n71(_uploadFile, _downloadFile, value);
 }
 function from_candid_ServiceResult_3_n58(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_3): ServiceResult_3 {
     return from_candid_variant_n59(_uploadFile, _downloadFile, value);
@@ -1123,8 +1139,8 @@ function from_candid_ServiceResult_3_n58(_uploadFile: (file: ExternalBlob) => Pr
 function from_candid_ServiceResult_4_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult_4): ServiceResult_4 {
     return from_candid_variant_n24(_uploadFile, _downloadFile, value);
 }
-function from_candid_ServiceResult_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult): ServiceResult {
-    return from_candid_variant_n70(_uploadFile, _downloadFile, value);
+function from_candid_ServiceResult_n72(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ServiceResult): ServiceResult {
+    return from_candid_variant_n73(_uploadFile, _downloadFile, value);
 }
 function from_candid_ShiftStatus_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ShiftStatus): ShiftStatus {
     return from_candid_variant_n47(_uploadFile, _downloadFile, value);
@@ -1137,6 +1153,9 @@ function from_candid_TimeOffRequest_n49(_uploadFile: (file: ExternalBlob) => Pro
 }
 function from_candid_TimeOffStatus_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TimeOffStatus): TimeOffStatus {
     return from_candid_variant_n52(_uploadFile, _downloadFile, value);
+}
+function from_candid_TimesheetEntry_n66(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TimesheetEntry): TimesheetEntry {
+    return from_candid_record_n67(_uploadFile, _downloadFile, value);
 }
 function from_candid_TimesheetStatus_n63(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TimesheetStatus): TimesheetStatus {
     return from_candid_variant_n64(_uploadFile, _downloadFile, value);
@@ -1346,9 +1365,30 @@ function from_candid_record_n62(_uploadFile: (file: ExternalBlob) => Promise<Uin
         totalHours: value.totalHours,
         submittedAt: value.submittedAt,
         hrComment: record_opt_to_undefined(from_candid_opt_n37(_uploadFile, _downloadFile, value.hrComment)),
-        entries: value.entries,
+        entries: from_candid_vec_n65(_uploadFile, _downloadFile, value.entries),
         employeeId: value.employeeId,
         managerComment: record_opt_to_undefined(from_candid_opt_n37(_uploadFile, _downloadFile, value.managerComment))
+    };
+}
+function from_candid_record_n67(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    startTime: string;
+    endTime: string;
+    date: string;
+    hoursWorked: number;
+    buildingNumber: [] | [string];
+}): {
+    startTime: string;
+    endTime: string;
+    date: string;
+    hoursWorked: number;
+    buildingNumber?: string;
+} {
+    return {
+        startTime: value.startTime,
+        endTime: value.endTime,
+        date: value.date,
+        hoursWorked: value.hoursWorked,
+        buildingNumber: record_opt_to_undefined(from_candid_opt_n37(_uploadFile, _downloadFile, value.buildingNumber))
     };
 }
 function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1471,7 +1511,7 @@ function from_candid_variant_n64(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): TimesheetStatus {
     return "managerApproved" in value ? TimesheetStatus.managerApproved : "submitted" in value ? TimesheetStatus.submitted : "hrDenied" in value ? TimesheetStatus.hrDenied : "managerDenied" in value ? TimesheetStatus.managerDenied : "hrApproved" in value ? TimesheetStatus.hrApproved : value;
 }
-function from_candid_variant_n66(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: string;
 } | {
     err: string;
@@ -1490,7 +1530,7 @@ function from_candid_variant_n66(_uploadFile: (file: ExternalBlob) => Promise<Ui
         err: value.err
     } : value;
 }
-function from_candid_variant_n68(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n71(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: _UserProfile;
 } | {
     err: string;
@@ -1509,7 +1549,7 @@ function from_candid_variant_n68(_uploadFile: (file: ExternalBlob) => Promise<Ui
         err: value.err
     } : value;
 }
-function from_candid_variant_n70(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n73(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: bigint;
 } | {
     err: string;
@@ -1546,6 +1586,9 @@ function from_candid_vec_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_vec_n60(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Timesheet>): Array<Timesheet> {
     return value.map((x)=>from_candid_Timesheet_n61(_uploadFile, _downloadFile, x));
 }
+function from_candid_vec_n65(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_TimesheetEntry>): Array<TimesheetEntry> {
+    return value.map((x)=>from_candid_TimesheetEntry_n66(_uploadFile, _downloadFile, x));
+}
 function to_candid_ApplicantStage_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApplicantStage): _ApplicantStage {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
@@ -1576,20 +1619,23 @@ function to_candid_ShiftStatus_n9(_uploadFile: (file: ExternalBlob) => Promise<U
 function to_candid_Shift_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Shift): _Shift {
     return to_candid_record_n8(_uploadFile, _downloadFile, value);
 }
-function to_candid_TimeOffRequest_n73(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffRequest): _TimeOffRequest {
-    return to_candid_record_n74(_uploadFile, _downloadFile, value);
+function to_candid_TimeOffRequest_n76(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffRequest): _TimeOffRequest {
+    return to_candid_record_n77(_uploadFile, _downloadFile, value);
 }
-function to_candid_TimeOffStatus_n75(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffStatus): _TimeOffStatus {
-    return to_candid_variant_n76(_uploadFile, _downloadFile, value);
+function to_candid_TimeOffStatus_n78(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffStatus): _TimeOffStatus {
+    return to_candid_variant_n79(_uploadFile, _downloadFile, value);
 }
-function to_candid_TimesheetStatus_n79(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimesheetStatus): _TimesheetStatus {
-    return to_candid_variant_n80(_uploadFile, _downloadFile, value);
+function to_candid_TimesheetEntry_n85(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimesheetEntry): _TimesheetEntry {
+    return to_candid_record_n86(_uploadFile, _downloadFile, value);
 }
-function to_candid_Timesheet_n77(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Timesheet): _Timesheet {
-    return to_candid_record_n78(_uploadFile, _downloadFile, value);
+function to_candid_TimesheetStatus_n82(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimesheetStatus): _TimesheetStatus {
+    return to_candid_variant_n83(_uploadFile, _downloadFile, value);
 }
-function to_candid_UserProfile_n71(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserProfile): _UserProfile {
-    return to_candid_record_n72(_uploadFile, _downloadFile, value);
+function to_candid_Timesheet_n80(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Timesheet): _Timesheet {
+    return to_candid_record_n81(_uploadFile, _downloadFile, value);
+}
+function to_candid_UserProfile_n74(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserProfile): _UserProfile {
+    return to_candid_record_n75(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n6(_uploadFile, _downloadFile, value);
@@ -1702,7 +1748,7 @@ function to_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         department: value.department
     };
 }
-function to_candid_record_n72(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n75(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     username: string;
     role: Role;
     employeeId?: string;
@@ -1717,7 +1763,7 @@ function to_candid_record_n72(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         employeeId: value.employeeId ? candid_some(value.employeeId) : candid_none()
     };
 }
-function to_candid_record_n74(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n77(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: string;
     status: TimeOffStatus;
     endDate: bigint;
@@ -1738,49 +1784,13 @@ function to_candid_record_n74(_uploadFile: (file: ExternalBlob) => Promise<Uint8
 } {
     return {
         id: value.id,
-        status: to_candid_TimeOffStatus_n75(_uploadFile, _downloadFile, value.status),
+        status: to_candid_TimeOffStatus_n78(_uploadFile, _downloadFile, value.status),
         endDate: value.endDate,
         approverComments: value.approverComments ? candid_some(value.approverComments) : candid_none(),
         timeOffType: value.timeOffType,
         employeeId: value.employeeId,
         requestDate: value.requestDate,
         startDate: value.startDate
-    };
-}
-function to_candid_record_n78(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    id: string;
-    status: TimesheetStatus;
-    employeeUsername: string;
-    weekStartDate: string;
-    totalHours: number;
-    submittedAt: bigint;
-    hrComment?: string;
-    entries: Array<TimesheetEntry>;
-    employeeId: string;
-    managerComment?: string;
-}): {
-    id: string;
-    status: _TimesheetStatus;
-    employeeUsername: string;
-    weekStartDate: string;
-    totalHours: number;
-    submittedAt: bigint;
-    hrComment: [] | [string];
-    entries: Array<_TimesheetEntry>;
-    employeeId: string;
-    managerComment: [] | [string];
-} {
-    return {
-        id: value.id,
-        status: to_candid_TimesheetStatus_n79(_uploadFile, _downloadFile, value.status),
-        employeeUsername: value.employeeUsername,
-        weekStartDate: value.weekStartDate,
-        totalHours: value.totalHours,
-        submittedAt: value.submittedAt,
-        hrComment: value.hrComment ? candid_some(value.hrComment) : candid_none(),
-        entries: value.entries,
-        employeeId: value.employeeId,
-        managerComment: value.managerComment ? candid_some(value.managerComment) : candid_none()
     };
 }
 function to_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1808,6 +1818,63 @@ function to_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
         date: value.date,
         employeeId: value.employeeId,
         department: value.department
+    };
+}
+function to_candid_record_n81(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    status: TimesheetStatus;
+    employeeUsername: string;
+    weekStartDate: string;
+    totalHours: number;
+    submittedAt: bigint;
+    hrComment?: string;
+    entries: Array<TimesheetEntry>;
+    employeeId: string;
+    managerComment?: string;
+}): {
+    id: string;
+    status: _TimesheetStatus;
+    employeeUsername: string;
+    weekStartDate: string;
+    totalHours: number;
+    submittedAt: bigint;
+    hrComment: [] | [string];
+    entries: Array<_TimesheetEntry>;
+    employeeId: string;
+    managerComment: [] | [string];
+} {
+    return {
+        id: value.id,
+        status: to_candid_TimesheetStatus_n82(_uploadFile, _downloadFile, value.status),
+        employeeUsername: value.employeeUsername,
+        weekStartDate: value.weekStartDate,
+        totalHours: value.totalHours,
+        submittedAt: value.submittedAt,
+        hrComment: value.hrComment ? candid_some(value.hrComment) : candid_none(),
+        entries: to_candid_vec_n84(_uploadFile, _downloadFile, value.entries),
+        employeeId: value.employeeId,
+        managerComment: value.managerComment ? candid_some(value.managerComment) : candid_none()
+    };
+}
+function to_candid_record_n86(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    startTime: string;
+    endTime: string;
+    date: string;
+    hoursWorked: number;
+    buildingNumber?: string;
+}): {
+    startTime: string;
+    endTime: string;
+    date: string;
+    hoursWorked: number;
+    buildingNumber: [] | [string];
+} {
+    return {
+        startTime: value.startTime,
+        endTime: value.endTime,
+        date: value.date,
+        hoursWorked: value.hoursWorked,
+        buildingNumber: value.buildingNumber ? candid_some(value.buildingNumber) : candid_none()
     };
 }
 function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ShiftStatus): {
@@ -1912,7 +1979,7 @@ function to_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         guest: null
     } : value;
 }
-function to_candid_variant_n76(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffStatus): {
+function to_candid_variant_n79(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimeOffStatus): {
     pending: null;
 } | {
     denied: null;
@@ -1927,7 +1994,7 @@ function to_candid_variant_n76(_uploadFile: (file: ExternalBlob) => Promise<Uint
         approved: null
     } : value;
 }
-function to_candid_variant_n80(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimesheetStatus): {
+function to_candid_variant_n83(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: TimesheetStatus): {
     managerApproved: null;
 } | {
     submitted: null;
@@ -1949,6 +2016,9 @@ function to_candid_variant_n80(_uploadFile: (file: ExternalBlob) => Promise<Uint
     } : value == TimesheetStatus.hrApproved ? {
         hrApproved: null
     } : value;
+}
+function to_candid_vec_n84(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<TimesheetEntry>): Array<_TimesheetEntry> {
+    return value.map((x)=>to_candid_TimesheetEntry_n85(_uploadFile, _downloadFile, x));
 }
 export interface CreateActorOptions {
     agent?: Agent;

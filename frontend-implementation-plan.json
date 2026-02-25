@@ -1,42 +1,74 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Staff Management Page crash on 'Add Staff'",
+  "title": "Redesign timesheet as calendar UI and fix submission errors for all roles",
   "requirements": [
     {
-      "id": "REQ-79",
-      "summary": "Fix the crash/error in AddEmployeePage.tsx that occurs when clicking 'Add Staff' button",
+      "id": "REQ-99",
+      "summary": "Redesign EmployeeTimesheetPage with a modern 7-day calendar grid layout featuring day cards, dark navy/amber theme, and improved visual hierarchy",
       "acceptanceCriteria": [
-        "Clicking 'Add Staff' on the HR Employees page opens the AddEmployeePage form without any crash or error screen.",
-        "The Direct Manager dropdown populates with active manager-role employees without throwing a runtime error.",
-        "All form fields (name, email, department, role, username, password, directManagerId, etc.) are bound correctly and accept user input.",
-        "Submitting the form with valid data calls the backend employee creation endpoint without an unhandled exception.",
-        "Inline validation errors are shown for empty required fields without crashing.",
-        "A success toast is displayed and the user is navigated back to the employee list on successful submission.",
-        "No TypeScript compilation errors exist in AddEmployeePage.tsx."
+        "The timesheet entry form displays a 7-column calendar grid (Sun–Sat) with one card per day",
+        "Each day card contains start time, end time, Building #, and auto-calculated paid hours fields",
+        "The layout is visually uncluttered with clear spacing between day cards",
+        "The dark navy/amber visual theme is applied consistently throughout the redesigned page",
+        "A summary bar below the calendar shows total paid hours for the week and the break deduction note",
+        "The Submit Timesheet button is prominently styled and accessible",
+        "Previously submitted timesheets are listed below the calendar with status badges",
+        "All existing functionality (break deduction, building number, week navigation) is preserved"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/hr/AddEmployeePage.tsx",
+          "path": "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
           "operation": "modify",
-          "description": "Fix all runtime errors in the AddEmployeePage component: Guard against null/undefined actor access by checking the actor exists before rendering the form; fix type mismatches on the directManagerId field by ensuring it is properly typed as optional string and the manager dropdown correctly handles the field binding; ensure all form fields (fullName, email, department, jobTitle, phone, role, badgeId, startDate, directManagerId, username, password) are properly bound to form state with correct TypeScript types matching the CreateEmployeeWithAccountInput interface; wrap the mutation call in proper error handling to catch and display backend errors without crashing; add loading state checks to prevent form submission while the mutation is in progress; ensure the Direct Manager dropdown filters employees by role (manager, supervisor, hrAdmin) and status (active) and maps them correctly to dropdown options; verify form validation triggers inline error messages without throwing exceptions; ensure navigation back to the employees list occurs only after successful submission."
+          "description": "Replace the table-based timesheet entry layout with a 7-column calendar grid where each day (Sunday–Saturday) is rendered as an elevated card. Each card should display the day name, numeric date, input fields for start time, end time, Building #, and a read-only display of auto-calculated paid hours (applying the 30-minute break deduction for shifts 8.5+ hours). Apply the dark navy/amber theme with card elevation (bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 rounded-lg p-4), consistent spacing (gap-4 between cards), and clean typography. Add a summary bar below the calendar grid showing the running total paid hours and the break deduction note. Style the Submit Timesheet button prominently (bg-navy-600 hover:bg-navy-700 text-white font-semibold py-3 px-6). Maintain the existing week navigation controls, date selection dropdown, and previously submitted timesheets list with status badges. Ensure all interactive elements (inputs, buttons) remain keyboard-accessible and the layout is responsive."
         }
       ]
     },
     {
-      "id": "REQ-80",
-      "summary": "Audit and fix the mutation hook in useQueries.ts for employee creation",
+      "id": "REQ-100",
+      "summary": "Fix employee timesheet submission by auto-deriving employeeId from AuthContext session instead of requiring manual input",
       "acceptanceCriteria": [
-        "The mutation hook does not throw if the actor is null or undefined — it rejects with a descriptive error message instead.",
-        "A backend #ok response resolves the Promise and triggers employees query cache invalidation.",
-        "A backend #err response rejects the Promise with the error text, which is surfaced to the form as an inline error.",
-        "No unhandled promise rejections occur during the mutation call."
+        "Employees can submit timesheets without any prompt or field for employee ID",
+        "The employeeId is read directly from AuthContext session state and passed to the backend",
+        "If employeeId is missing from the session, a user-friendly inline warning is shown and submission is blocked",
+        "No unhandled promise rejection or console error occurs during timesheet submission",
+        "A success toast is shown on successful submission",
+        "The submitted timesheet appears in the history list with status 'Pending Manager Review'"
       ],
       "file_operations": [
         {
+          "path": "frontend/src/pages/employee/EmployeeTimesheetPage.tsx",
+          "operation": "modify",
+          "description": "Import useAuth from the AuthContext to access the session state. Before the submit handler runs, check if session.employeeId exists. If it does not exist, display an inline alert (border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/20 p-4 text-amber-800 dark:text-amber-200) with the message 'Your account is not linked to an employee profile' and disable the submit button. If employeeId is present, pass it as part of the timesheet payload to the useSubmitTimesheet mutation. Wrap the mutation call in a try/catch and display a success toast ('Timesheet submitted successfully') on success or an error toast with the error message on failure. Ensure the mutation does not require a separate employeeId input field or parameter beyond what is passed from the session."
+        },
+        {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Fix the useCreateEmployeeWithAccount mutation hook (or equivalent employee creation mutation) to guard against null/undefined actor by checking if actor exists before calling the backend method and throwing a descriptive error if not; ensure the mutationFn properly awaits the backend call and handles the response (the backend method createEmployeeWithAccount returns Promise<void>, so verify it resolves correctly); add proper error handling to catch any exceptions from the backend call and reject the Promise with a user-friendly error message; configure the onSuccess callback to invalidate the 'employees' query key using queryClient.invalidateQueries so the employee list refreshes automatically after successful creation; ensure the mutation hook is properly typed with CreateEmployeeWithAccountInput as the input parameter type."
+          "description": "Update the useSubmitTimesheet mutation's mutationFn to ensure the employeeId is passed as part of the timesheet object payload (not as a separate argument). The mutation should call actor.submitTimesheet(timesheet) where timesheet includes employeeId from the session. Handle the backend response by checking if the result is an #ok or #err variant: if #ok, resolve the promise with the success message; if #err, reject the promise with the error message. Ensure the mutation does not inadvertently require or validate an employeeId field that isn't part of the timesheet object. Add proper type guards to confirm the actor is defined before calling the backend method."
+        }
+      ]
+    },
+    {
+      "id": "REQ-101",
+      "summary": "Fix manager timesheet review submission by ensuring the mutation sends only timesheetId, approved flag, and comment without requiring an employeeId",
+      "acceptanceCriteria": [
+        "Managers can approve or deny submitted timesheets without receiving an 'employee ID' error",
+        "The useManagerReviewTimesheet mutation sends timesheet ID, approved flag, and comment only — no extra employee ID field required",
+        "The mutation guards against null/undefined actor before calling the backend",
+        "Backend #ok/#err variants are correctly mapped to resolved/rejected Promise states",
+        "A success toast is shown after manager approves or denies a timesheet",
+        "The reviewed timesheet moves from 'Pending Your Review' to 'Reviewed / Processed' immediately after action"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/manager/ManagerTimesheetPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the manager review dialog and action handlers pass only the timesheetId, approved boolean, and optional comment to the useManagerReviewTimesheet mutation. Do not include or derive an employeeId field in the mutation call. Add a try/catch block around the mutation call and display a success toast ('Timesheet reviewed successfully') on success or an error toast with the backend error message on failure. Ensure the UI immediately updates the timesheet status after a successful review by invalidating the relevant query keys so the timesheet moves from the pending list to the processed list."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Update the useManagerReviewTimesheet mutation's mutationFn to call actor.managerReviewTimesheet(id, approved, comment) where id is the timesheet ID, approved is a boolean, and comment is a string. Add a null/undefined check for the actor before making the call (if (!actor) throw new Error('Actor not available')). Handle the backend response by checking if the result is an #ok or #err variant: if #ok, resolve the promise with the success message; if #err, reject the promise with the error message. Do not pass an employeeId parameter to this backend method. Ensure the mutation invalidates the 'timesheets' query key on success so the UI reflects the updated timesheet status immediately."
         }
       ]
     }

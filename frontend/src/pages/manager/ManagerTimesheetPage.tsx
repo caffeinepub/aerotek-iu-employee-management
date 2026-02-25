@@ -1,235 +1,290 @@
 import React, { useState } from 'react';
-import { useTimesheets, useManagerReviewTimesheet } from '../../hooks/useQueries';
+import { useGetTimesheets, useManagerReviewTimesheet } from '../../hooks/useQueries';
 import { Timesheet, TimesheetStatus } from '../../backend';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Loader2,
+  ClipboardList,
+  User,
+  CalendarDays,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, ClipboardList } from 'lucide-react';
-import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
 
-function getStatusBadge(status: TimesheetStatus) {
+function statusLabel(status: TimesheetStatus): string {
   switch (status) {
-    case TimesheetStatus.submitted:
-      return <Badge variant="secondary">Submitted</Badge>;
-    case TimesheetStatus.managerApproved:
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Manager Approved</Badge>;
-    case TimesheetStatus.managerDenied:
-      return <Badge variant="destructive">Manager Denied</Badge>;
-    case TimesheetStatus.hrApproved:
-      return <Badge className="bg-green-100 text-green-800 border-green-200">HR Approved</Badge>;
-    case TimesheetStatus.hrDenied:
-      return <Badge variant="destructive">HR Denied</Badge>;
-    default:
-      return <Badge variant="outline">{String(status)}</Badge>;
+    case TimesheetStatus.submitted: return 'Pending Review';
+    case TimesheetStatus.managerApproved: return 'Approved';
+    case TimesheetStatus.managerDenied: return 'Denied';
+    case TimesheetStatus.hrApproved: return 'HR Approved';
+    case TimesheetStatus.hrDenied: return 'HR Denied';
+    default: return String(status);
+  }
+}
+
+function statusVariant(status: TimesheetStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case TimesheetStatus.submitted: return 'secondary';
+    case TimesheetStatus.managerApproved: return 'default';
+    case TimesheetStatus.managerDenied: return 'destructive';
+    case TimesheetStatus.hrApproved: return 'default';
+    case TimesheetStatus.hrDenied: return 'destructive';
+    default: return 'outline';
   }
 }
 
 export default function ManagerTimesheetPage() {
-  const { data: timesheets, isLoading } = useTimesheets();
+  const { data: timesheets = [], isLoading } = useGetTimesheets();
   const reviewMutation = useManagerReviewTimesheet();
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [denyDialogOpen, setDenyDialogOpen] = useState(false);
-  const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
+  const [denyTarget, setDenyTarget] = useState<Timesheet | null>(null);
   const [denyComment, setDenyComment] = useState('');
 
-  const pendingTimesheets = (timesheets || []).filter(
-    (ts) => ts.status === TimesheetStatus.submitted
-  );
+  const pending = timesheets.filter(ts => ts.status === TimesheetStatus.submitted);
+  const reviewed = timesheets.filter(ts => ts.status !== TimesheetStatus.submitted);
 
-  const reviewedTimesheets = (timesheets || []).filter(
-    (ts) => ts.status !== TimesheetStatus.submitted
-  );
-
-  const handleApprove = async (ts: Timesheet) => {
+  async function handleApprove(ts: Timesheet) {
     try {
       await reviewMutation.mutateAsync({ id: ts.id, approved: true, comment: '' });
-      toast.success(`Timesheet for ${ts.employeeUsername} approved.`);
-    } catch (err) {
+      toast.success('Timesheet approved successfully');
+    } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve timesheet');
     }
-  };
+  }
 
-  const handleDenyOpen = (ts: Timesheet) => {
-    setSelectedTimesheet(ts);
+  function openDenyDialog(ts: Timesheet) {
+    setDenyTarget(ts);
     setDenyComment('');
     setDenyDialogOpen(true);
-  };
+  }
 
-  const handleDenyConfirm = async () => {
-    if (!selectedTimesheet) return;
-    if (!denyComment.trim()) {
-      toast.error('Please provide a reason for denial.');
-      return;
-    }
+  async function handleDenyConfirm() {
+    if (!denyTarget) return;
     try {
-      await reviewMutation.mutateAsync({
-        id: selectedTimesheet.id,
-        approved: false,
-        comment: denyComment,
-      });
-      toast.success('Timesheet denied.');
+      await reviewMutation.mutateAsync({ id: denyTarget.id, approved: false, comment: denyComment });
+      toast.success('Timesheet denied');
       setDenyDialogOpen(false);
-      setSelectedTimesheet(null);
-      setDenyComment('');
-    } catch (err) {
+      setDenyTarget(null);
+    } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to deny timesheet');
     }
-  };
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedId(prev => (prev === id ? null : id));
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-navy-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Timesheet Review</h1>
-        <p className="text-muted-foreground text-sm mt-1">Review and approve employee timesheets</p>
-      </div>
+    <div className="min-h-screen bg-navy-950 text-slate-100">
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
 
-      {/* Pending Review */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <ClipboardList className="h-5 w-5" />
-          Pending Review
-          {pendingTimesheets.length > 0 && (
-            <Badge variant="secondary">{pendingTimesheets.length}</Badge>
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <ClipboardList className="w-8 h-8 text-amber-400" />
+            Timesheet Review
+          </h1>
+          <p className="text-slate-400 mt-1 text-sm">Review and approve or deny employee timesheets.</p>
+        </div>
+
+        {/* Pending */}
+        <section>
+          <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-400" />
+            Pending Your Review
+            {pending.length > 0 && (
+              <span className="ml-1 bg-amber-500 text-navy-950 text-xs font-bold px-2 py-0.5 rounded-full">
+                {pending.length}
+              </span>
+            )}
+          </h2>
+
+          {pending.length === 0 ? (
+            <div className="bg-navy-900 border border-navy-700 rounded-xl p-8 text-center text-slate-500">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>No timesheets pending review.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pending.map(ts => (
+                <TimesheetCard
+                  key={ts.id}
+                  ts={ts}
+                  expanded={expandedId === ts.id}
+                  onToggle={() => toggleExpand(ts.id)}
+                  actions={
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(ts)}
+                        disabled={reviewMutation.isPending}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                      >
+                        {reviewMutation.isPending
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <><CheckCircle2 className="w-4 h-4 mr-1" />Approve</>
+                        }
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => openDenyDialog(ts)}
+                        disabled={reviewMutation.isPending}
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />Deny
+                      </Button>
+                    </div>
+                  }
+                />
+              ))}
+            </div>
           )}
-        </h2>
+        </section>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
-          </div>
-        ) : pendingTimesheets.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No timesheets pending review.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {pendingTimesheets.map((ts) => (
-              <Card key={ts.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{ts.employeeUsername}</CardTitle>
-                    {getStatusBadge(ts.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">Week of {ts.weekStartDate} · {ts.totalHours}h total</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1 mb-4">
-                    {ts.entries.map((entry) => (
-                      <div key={entry.date} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{entry.date}</span>
-                        <span>{entry.startTime} – {entry.endTime}</span>
-                        <span className="font-medium">{entry.hoursWorked}h</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1 text-destructive border-destructive hover:bg-destructive/10"
-                      onClick={() => handleDenyOpen(ts)}
-                      disabled={reviewMutation.isPending}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Deny
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => handleApprove(ts)}
-                      disabled={reviewMutation.isPending}
-                    >
-                      {reviewMutation.isPending ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                      Approve
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {/* Reviewed */}
+        {reviewed.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-slate-400" />
+              Reviewed / Processed
+            </h2>
+            <div className="space-y-3">
+              {reviewed.map(ts => (
+                <TimesheetCard
+                  key={ts.id}
+                  ts={ts}
+                  expanded={expandedId === ts.id}
+                  onToggle={() => toggleExpand(ts.id)}
+                />
+              ))}
+            </div>
+          </section>
         )}
       </div>
 
-      {/* Reviewed Timesheets */}
-      {reviewedTimesheets.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-3">Reviewed Timesheets</h2>
-          <div className="space-y-2">
-            {reviewedTimesheets.map((ts) => (
-              <Card key={ts.id}>
-                <CardContent className="py-3 px-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{ts.employeeUsername}</p>
-                      <p className="text-xs text-muted-foreground">Week of {ts.weekStartDate} · {ts.totalHours}h</p>
-                    </div>
-                    {getStatusBadge(ts.status)}
-                  </div>
-                  {ts.managerComment && (
-                    <p className="text-xs text-muted-foreground mt-2 italic">"{ts.managerComment}"</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Deny Dialog */}
       <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-navy-900 border-navy-700 text-white">
           <DialogHeader>
-            <DialogTitle>Deny Timesheet</DialogTitle>
+            <DialogTitle className="text-white">Deny Timesheet</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Provide a reason for denying this timesheet (optional).
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Please provide a reason for denying this timesheet.
-            </p>
-            <div>
-              <Label htmlFor="deny-comment">Reason</Label>
-              <Textarea
-                id="deny-comment"
-                value={denyComment}
-                onChange={(e) => setDenyComment(e.target.value)}
-                placeholder="Enter reason for denial..."
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-          </div>
+          <Textarea
+            value={denyComment}
+            onChange={e => setDenyComment(e.target.value)}
+            placeholder="Enter reason for denial..."
+            className="bg-navy-800 border-navy-600 text-white placeholder:text-slate-500 min-h-[100px]"
+          />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDenyDialogOpen(false)}>
+            <Button variant="ghost" onClick={() => setDenyDialogOpen(false)} className="text-slate-300">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDenyConfirm}
-              disabled={reviewMutation.isPending || !denyComment.trim()}
+              disabled={reviewMutation.isPending}
             >
-              {reviewMutation.isPending ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-              ) : null}
-              Deny Timesheet
+              {reviewMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Confirm Deny
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── TimesheetCard sub-component ───────────────────────────────────────────────
+
+interface TimesheetCardProps {
+  ts: Timesheet;
+  expanded: boolean;
+  onToggle: () => void;
+  actions?: React.ReactNode;
+}
+
+function TimesheetCard({ ts, expanded, onToggle, actions }: TimesheetCardProps) {
+  return (
+    <div className="bg-navy-900 border border-navy-700 rounded-xl overflow-hidden hover:border-navy-600 transition-colors">
+      {/* Summary row */}
+      <div className="flex items-center justify-between px-5 py-4 gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-10 h-10 rounded-lg bg-navy-800 border border-navy-600 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-white text-sm truncate">{ts.employeeUsername}</p>
+            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+              <CalendarDays className="w-3 h-3" />
+              Week of {ts.weekStartDate} · {ts.totalHours.toFixed(2)} hrs · {ts.entries.length} day{ts.entries.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <Badge variant={statusVariant(ts.status)} className="text-xs">
+            {statusLabel(ts.status)}
+          </Badge>
+          {actions}
+          <button
+            onClick={onToggle}
+            className="text-slate-400 hover:text-white transition-colors p-1"
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded entries */}
+      {expanded && (
+        <div className="border-t border-navy-700 px-5 py-4 bg-navy-800/40">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {ts.entries.map((entry, i) => (
+              <div key={i} className="bg-navy-800 border border-navy-700 rounded-lg p-3">
+                <p className="text-xs font-bold text-amber-400 mb-1">{entry.date}</p>
+                <p className="text-sm text-white">{entry.startTime} – {entry.endTime}</p>
+                <p className="text-xs text-slate-400 mt-1">{entry.hoursWorked.toFixed(2)} paid hrs</p>
+                {entry.buildingNumber && (
+                  <p className="text-xs text-slate-500 mt-0.5">Bldg #{entry.buildingNumber}</p>
+                )}
+              </div>
+            ))}
+          </div>
+          {(ts.managerComment || ts.hrComment) && (
+            <div className="flex items-start gap-2 text-xs text-slate-400 bg-navy-900 rounded-lg p-3 border border-navy-700">
+              <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{ts.managerComment || ts.hrComment}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useTimesheets, useHrReviewTimesheet } from '../../hooks/useQueries';
+import { useGetTimesheets, useHRReviewTimesheet } from '../../hooks/useQueries';
 import { Timesheet, TimesheetStatus } from '../../backend';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -15,265 +14,233 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { CheckCircle, XCircle, ClipboardList, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { ClipboardList, CheckCircle, XCircle, Search } from 'lucide-react';
 
-function getStatusBadge(status: TimesheetStatus) {
+function getStatusBadgeVariant(status: TimesheetStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status) {
-    case TimesheetStatus.submitted:
-      return <Badge variant="secondary">Submitted</Badge>;
-    case TimesheetStatus.managerApproved:
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Manager Approved</Badge>;
-    case TimesheetStatus.managerDenied:
-      return <Badge variant="destructive">Manager Denied</Badge>;
-    case TimesheetStatus.hrApproved:
-      return <Badge className="bg-green-100 text-green-800 border-green-200">HR Approved</Badge>;
-    case TimesheetStatus.hrDenied:
-      return <Badge variant="destructive">HR Denied</Badge>;
-    default:
-      return <Badge variant="outline">{String(status)}</Badge>;
+    case TimesheetStatus.submitted: return 'secondary';
+    case TimesheetStatus.managerApproved: return 'default';
+    case TimesheetStatus.managerDenied: return 'destructive';
+    case TimesheetStatus.hrApproved: return 'default';
+    case TimesheetStatus.hrDenied: return 'destructive';
+    default: return 'outline';
+  }
+}
+
+function getStatusLabel(status: TimesheetStatus): string {
+  switch (status) {
+    case TimesheetStatus.submitted: return 'Submitted';
+    case TimesheetStatus.managerApproved: return 'Manager Approved';
+    case TimesheetStatus.managerDenied: return 'Manager Denied';
+    case TimesheetStatus.hrApproved: return 'HR Approved';
+    case TimesheetStatus.hrDenied: return 'HR Denied';
+    default: return String(status);
   }
 }
 
 export default function HRTimesheetPage() {
-  const { data: timesheets, isLoading } = useTimesheets();
-  const hrReviewMutation = useHrReviewTimesheet();
+  const { data: timesheets = [], isLoading } = useGetTimesheets();
+  const hrReview = useHRReviewTimesheet();
 
   const [denyDialogOpen, setDenyDialogOpen] = useState(false);
-  const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
-  const [denyComment, setDenyComment] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [hrComment, setHrComment] = useState('');
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const pendingHRTimesheets = (timesheets || []).filter(
-    (ts) => ts.status === TimesheetStatus.managerApproved
+  const pendingHRTimesheets = timesheets.filter(
+    (t: Timesheet) => t.status === TimesheetStatus.managerApproved
   );
 
-  const allTimesheets = (timesheets || []).filter((ts) => {
+  const filteredAll = timesheets.filter((t: Timesheet) => {
     const matchesSearch =
-      !searchQuery ||
-      ts.employeeUsername.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ts.weekStartDate.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || ts.status === statusFilter;
+      !search ||
+      t.employeeUsername.toLowerCase().includes(search.toLowerCase()) ||
+      t.weekStartDate.includes(search);
+    const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleApprove = async (ts: Timesheet) => {
+  const handleApprove = async (id: string) => {
     try {
-      await hrReviewMutation.mutateAsync({ id: ts.id, approved: true, comment: '' });
-      toast.success(`Timesheet for ${ts.employeeUsername} approved.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve timesheet');
+      await hrReview.mutateAsync({ id, approved: true, comment: '' });
+      toast.success('Timesheet HR approved!');
+    } catch (e) {
+      toast.error(`Failed to approve: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   };
 
-  const handleDenyOpen = (ts: Timesheet) => {
-    setSelectedTimesheet(ts);
-    setDenyComment('');
+  const handleDenyOpen = (id: string) => {
+    setSelectedId(id);
+    setHrComment('');
     setDenyDialogOpen(true);
   };
 
   const handleDenyConfirm = async () => {
-    if (!selectedTimesheet) return;
-    if (!denyComment.trim()) {
-      toast.error('Please provide a reason for denial.');
-      return;
-    }
     try {
-      await hrReviewMutation.mutateAsync({
-        id: selectedTimesheet.id,
-        approved: false,
-        comment: denyComment,
-      });
-      toast.success('Timesheet denied.');
+      await hrReview.mutateAsync({ id: selectedId, approved: false, comment: hrComment });
+      toast.success('Timesheet HR denied.');
       setDenyDialogOpen(false);
-      setSelectedTimesheet(null);
-      setDenyComment('');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to deny timesheet');
+    } catch (e) {
+      toast.error(`Failed to deny: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Timesheet Management</h1>
-        <p className="text-muted-foreground text-sm mt-1">Final approval for employee timesheets</p>
+        <h1 className="text-2xl font-bold text-foreground">HR Timesheet Review</h1>
+        <p className="text-muted-foreground text-sm mt-1">Final approval for manager-approved timesheets</p>
       </div>
 
       {/* Pending HR Approval */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <ClipboardList className="h-5 w-5" />
-          Pending HR Approval
-          {pendingHRTimesheets.length > 0 && (
-            <Badge variant="secondary">{pendingHRTimesheets.length}</Badge>
-          )}
-        </h2>
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
-          </div>
-        ) : pendingHRTimesheets.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Pending HR Approval ({pendingHRTimesheets.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : pendingHRTimesheets.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">
               No timesheets pending HR approval.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {pendingHRTimesheets.map((ts) => (
-              <Card key={ts.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{ts.employeeUsername}</CardTitle>
-                    {getStatusBadge(ts.status)}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {pendingHRTimesheets.map((ts: Timesheet) => (
+                <div
+                  key={ts.id}
+                  className="flex items-center justify-between p-3 rounded-lg border"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{ts.employeeUsername}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Week of {ts.weekStartDate} · {ts.totalHours.toFixed(2)} hrs
+                    </p>
+                    {ts.managerComment && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Manager: {ts.managerComment}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Week of {ts.weekStartDate} · {ts.totalHours}h total
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1 mb-4">
-                    {ts.entries.map((entry) => (
-                      <div key={entry.date} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{entry.date}</span>
-                        <span>{entry.startTime} – {entry.endTime}</span>
-                        <span className="font-medium">{entry.hoursWorked}h</span>
-                      </div>
-                    ))}
-                  </div>
-                  {ts.managerComment && (
-                    <div className="mb-3 p-2 bg-muted rounded text-sm">
-                      <span className="font-medium">Manager: </span>
-                      {ts.managerComment}
-                    </div>
-                  )}
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-2">
                     <Button
-                      variant="outline"
                       size="sm"
-                      className="gap-1 text-destructive border-destructive hover:bg-destructive/10"
-                      onClick={() => handleDenyOpen(ts)}
-                      disabled={hrReviewMutation.isPending}
+                      variant="outline"
+                      className="text-green-600 border-green-600 hover:bg-green-50"
+                      onClick={() => handleApprove(ts.id)}
+                      disabled={hrReview.isPending}
                     >
-                      <XCircle className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      onClick={() => handleDenyOpen(ts.id)}
+                      disabled={hrReview.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
                       Deny
                     </Button>
-                    <Button
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => handleApprove(ts)}
-                      disabled={hrReviewMutation.isPending}
-                    >
-                      {hrReviewMutation.isPending ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                      Final Approve
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* All Timesheets */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">All Timesheets</h2>
-        <div className="flex gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by employee or week..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+      <Card>
+        <CardHeader>
+          <CardTitle>All Timesheets</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by employee or week..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border rounded-md px-3 py-2 text-sm bg-background"
+            >
+              <option value="all">All Statuses</option>
+              <option value={TimesheetStatus.submitted}>Submitted</option>
+              <option value={TimesheetStatus.managerApproved}>Manager Approved</option>
+              <option value={TimesheetStatus.managerDenied}>Manager Denied</option>
+              <option value={TimesheetStatus.hrApproved}>HR Approved</option>
+              <option value={TimesheetStatus.hrDenied}>HR Denied</option>
+            </select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value={TimesheetStatus.submitted}>Submitted</SelectItem>
-              <SelectItem value={TimesheetStatus.managerApproved}>Manager Approved</SelectItem>
-              <SelectItem value={TimesheetStatus.managerDenied}>Manager Denied</SelectItem>
-              <SelectItem value={TimesheetStatus.hrApproved}>HR Approved</SelectItem>
-              <SelectItem value={TimesheetStatus.hrDenied}>HR Denied</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
-          </div>
-        ) : allTimesheets.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : filteredAll.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">
               No timesheets found.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {allTimesheets
-              .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
-              .map((ts) => (
-                <Card key={ts.id}>
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{ts.employeeUsername}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Week of {ts.weekStartDate} · {ts.totalHours}h
-                        </p>
-                      </div>
-                      {getStatusBadge(ts.status)}
-                    </div>
-                    {ts.hrComment && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">HR: "{ts.hrComment}"</p>
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredAll.map((ts: Timesheet) => (
+                <div
+                  key={ts.id}
+                  className="flex items-center justify-between p-3 rounded-lg border"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{ts.employeeUsername}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Week of {ts.weekStartDate} · {ts.totalHours.toFixed(2)} hrs
+                    </p>
+                    {ts.managerComment && (
+                      <p className="text-xs text-muted-foreground">Manager: {ts.managerComment}</p>
                     )}
-                  </CardContent>
-                </Card>
+                    {ts.hrComment && (
+                      <p className="text-xs text-muted-foreground">HR: {ts.hrComment}</p>
+                    )}
+                  </div>
+                  <Badge variant={getStatusBadgeVariant(ts.status)}>
+                    {getStatusLabel(ts.status)}
+                  </Badge>
+                </div>
               ))}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Deny Dialog */}
       <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deny Timesheet (HR)</DialogTitle>
+            <DialogTitle>HR Deny Timesheet</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Please provide a reason for the final denial of this timesheet.
+              Please provide a reason for HR denial.
             </p>
-            <div>
-              <Label htmlFor="hr-deny-comment">Reason</Label>
-              <Textarea
-                id="hr-deny-comment"
-                value={denyComment}
-                onChange={(e) => setDenyComment(e.target.value)}
-                placeholder="Enter reason for denial..."
-                className="mt-1"
-                rows={3}
-              />
-            </div>
+            <Textarea
+              placeholder="Enter HR denial reason..."
+              value={hrComment}
+              onChange={(e) => setHrComment(e.target.value)}
+              rows={3}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDenyDialogOpen(false)}>
@@ -282,12 +249,9 @@ export default function HRTimesheetPage() {
             <Button
               variant="destructive"
               onClick={handleDenyConfirm}
-              disabled={hrReviewMutation.isPending || !denyComment.trim()}
+              disabled={hrReview.isPending || !hrComment.trim()}
             >
-              {hrReviewMutation.isPending ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-              ) : null}
-              Deny Timesheet
+              {hrReview.isPending ? 'Denying...' : 'Deny Timesheet'}
             </Button>
           </DialogFooter>
         </DialogContent>

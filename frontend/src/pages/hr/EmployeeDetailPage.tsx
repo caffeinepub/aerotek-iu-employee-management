@@ -5,15 +5,23 @@ import {
   useUpdateEmployee,
   useDeactivateEmployee,
   useDeleteEmployee,
-  useGetEmployeesByRole,
+  useGetAllEmployees,
 } from '../../hooks/useQueries';
 import { Employee, Role, EmployeeStatus } from '../../backend';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,127 +33,91 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Edit, Save, X, Trash2, Loader2, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../../hooks/useAuth';
+import { ArrowLeft, Edit, Save, X, UserX, Trash2 } from 'lucide-react';
+
+function getStatusBadgeVariant(status: EmployeeStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case EmployeeStatus.active: return 'default';
+    case EmployeeStatus.inactive: return 'secondary';
+    case EmployeeStatus.terminated: return 'destructive';
+    default: return 'outline';
+  }
+}
 
 export default function EmployeeDetailPage() {
-  const { id } = useParams({ from: '/hr/employees/$id' });
+  const params = useParams({ from: '/hr/employees/$id' });
+  const id = params.id;
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const isHRAdmin = session?.role === 'hrAdmin';
+  const { session } = useAuthContext();
 
   const { data: employee, isLoading } = useGetEmployee(id);
-  const { data: managers = [] } = useGetEmployeesByRole(Role.manager);
+  const { data: allEmployees = [] } = useGetAllEmployees();
   const updateEmployee = useUpdateEmployee();
   const deactivateEmployee = useDeactivateEmployee();
   const deleteEmployee = useDeleteEmployee();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<Employee & { directManagerId: string }>>({});
+  const [form, setForm] = useState<Partial<Employee>>({});
 
-  function startEdit() {
-    if (!employee) return;
-    setEditForm({
-      fullName: employee.fullName,
-      email: employee.email,
-      phone: employee.phone,
-      department: employee.department,
-      jobTitle: employee.jobTitle,
-      role: employee.role,
-      status: employee.status,
-      badgeId: employee.badgeId,
-      directManagerId: employee.directManagerId ?? '',
-    });
-    setIsEditing(true);
-  }
+  const isHRAdmin = session?.role === Role.hrAdmin;
 
-  function cancelEdit() {
+  const managers = allEmployees.filter(
+    (e: Employee) => e.role === Role.manager || e.role === Role.hrAdmin
+  );
+
+  const handleEdit = () => {
+    if (employee) {
+      setForm({ ...employee });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancel = () => {
+    setForm({});
     setIsEditing(false);
-    setEditForm({});
-  }
+  };
 
-  async function handleSave() {
-    if (!employee) return;
-
-    const isManagerRole = editForm.role === Role.manager || editForm.role === Role.hrAdmin;
-    if (!isManagerRole && !editForm.directManagerId) {
-      toast.error('Please select a direct manager');
-      return;
-    }
-
-    const updated: Employee = {
-      ...employee,
-      fullName: editForm.fullName ?? employee.fullName,
-      email: editForm.email ?? employee.email,
-      phone: editForm.phone ?? employee.phone,
-      department: editForm.department ?? employee.department,
-      jobTitle: editForm.jobTitle ?? employee.jobTitle,
-      role: editForm.role ?? employee.role,
-      status: editForm.status ?? employee.status,
-      badgeId: editForm.badgeId ?? employee.badgeId,
-      directManagerId: isManagerRole ? 'HR' : (editForm.directManagerId ?? employee.directManagerId),
-    };
-
+  const handleSave = async () => {
+    if (!employee || !form.fullName) return;
     try {
+      const updated: Employee = {
+        ...employee,
+        ...form,
+        directManagerId: form.directManagerId || undefined,
+      } as Employee;
       await updateEmployee.mutateAsync({ id, profile: updated });
-      toast.success('Employee updated successfully');
+      toast.success('Employee updated successfully!');
       setIsEditing(false);
-    } catch (err) {
-      toast.error('Failed to update: ' + (err instanceof Error ? err.message : String(err)));
+    } catch (e) {
+      toast.error(`Failed to update: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
-  }
+  };
 
-  async function handleDeactivate() {
+  const handleDeactivate = async () => {
     try {
       await deactivateEmployee.mutateAsync(id);
-      toast.success('Employee deactivated');
-    } catch (err) {
-      toast.error('Failed to deactivate employee');
+      toast.success('Employee deactivated.');
+    } catch (e) {
+      toast.error(`Failed to deactivate: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
-  }
+  };
 
-  async function handleDelete() {
+  const handleDelete = async () => {
     try {
       await deleteEmployee.mutateAsync(id);
-      toast.success('Employee deleted');
+      toast.success('Employee deleted.');
       navigate({ to: '/hr/employees' });
-    } catch (err) {
-      toast.error('Failed to delete: ' + (err instanceof Error ? err.message : String(err)));
+    } catch (e) {
+      toast.error(`Failed to delete: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
-  }
-
-  function getStatusColor(status: EmployeeStatus) {
-    switch (status) {
-      case EmployeeStatus.active: return 'default';
-      case EmployeeStatus.inactive: return 'secondary';
-      case EmployeeStatus.terminated: return 'destructive';
-      default: return 'outline';
-    }
-  }
-
-  function getRoleLabel(role: Role) {
-    switch (role) {
-      case Role.hrAdmin: return 'HR Admin';
-      case Role.manager: return 'Manager';
-      case Role.supervisor: return 'Supervisor';
-      case Role.employee: return 'Employee';
-      default: return role;
-    }
-  }
-
-  function getManagerName(managerId?: string): string {
-    if (!managerId || managerId === 'HR' || managerId === 'UNASSIGNED') {
-      return managerId === 'HR' ? 'Human Resources' : managerId === 'UNASSIGNED' ? 'Unassigned' : '—';
-    }
-    const mgr = managers.find(m => m.id === managerId);
-    return mgr ? mgr.fullName : managerId;
-  }
+  };
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -154,177 +126,175 @@ export default function EmployeeDetailPage() {
     return (
       <div className="p-6">
         <p className="text-muted-foreground">Employee not found.</p>
-        <Button variant="link" onClick={() => navigate({ to: '/hr/employees' })}>Back to Employees</Button>
+        <Button variant="outline" onClick={() => navigate({ to: '/hr/employees' })} className="mt-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Employees
+        </Button>
       </div>
     );
   }
 
-  const isManagerRole = (editForm.role ?? employee.role) === Role.manager || (editForm.role ?? employee.role) === Role.hrAdmin;
+  const managerName = employee.directManagerId
+    ? allEmployees.find((e: Employee) => e.id === employee.directManagerId)?.fullName ?? employee.directManagerId
+    : '—';
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/hr/employees' })}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{employee.fullName}</h1>
-            <p className="text-muted-foreground text-sm">{employee.jobTitle} · {employee.department}</p>
-          </div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/hr/employees' })}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-foreground">{employee.fullName}</h1>
+          <p className="text-muted-foreground text-sm">{employee.jobTitle} · {employee.department}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {!isEditing && (
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              <Edit className="h-4 w-4 mr-1" /> Edit
-            </Button>
-          )}
-          {isEditing && (
-            <>
-              <Button variant="outline" size="sm" onClick={cancelEdit}>
-                <X className="h-4 w-4 mr-1" /> Cancel
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={updateEmployee.isPending}>
-                {updateEmployee.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                Save
-              </Button>
-            </>
-          )}
-        </div>
+        <Badge variant={getStatusBadgeVariant(employee.status)}>
+          {employee.status}
+        </Badge>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            Employee Details
-            <Badge variant={getStatusColor(employee.status)}>{employee.status}</Badge>
-          </CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Employee Details</CardTitle>
+          {!isEditing ? (
+            <Button variant="outline" size="sm" onClick={handleEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={updateEmployee.isPending}>
+                {updateEmployee.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
+                    Saving...
+                  </span>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {isEditing ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <>
               <div className="space-y-1">
                 <Label>Full Name</Label>
-                <Input value={editForm.fullName ?? ''} onChange={e => setEditForm(p => ({ ...p, fullName: e.target.value }))} />
+                <Input
+                  value={form.fullName ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Email</Label>
-                <Input value={editForm.email ?? ''} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
+                <Input
+                  value={form.email ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Phone</Label>
-                <Input value={editForm.phone ?? ''} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} />
+                <Input
+                  value={form.phone ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Department</Label>
-                <Input value={editForm.department ?? ''} onChange={e => setEditForm(p => ({ ...p, department: e.target.value }))} />
+                <Input
+                  value={form.department ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Job Title</Label>
-                <Input value={editForm.jobTitle ?? ''} onChange={e => setEditForm(p => ({ ...p, jobTitle: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label>Role</Label>
-                <Select value={editForm.role} onValueChange={v => setEditForm(p => ({ ...p, role: v as Role, directManagerId: '' }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={Role.employee}>Employee</SelectItem>
-                    <SelectItem value={Role.manager}>Manager</SelectItem>
-                    <SelectItem value={Role.supervisor}>Supervisor</SelectItem>
-                    <SelectItem value={Role.hrAdmin}>HR Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Status</Label>
-                <Select value={editForm.status} onValueChange={v => setEditForm(p => ({ ...p, status: v as EmployeeStatus }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EmployeeStatus.active}>Active</SelectItem>
-                    <SelectItem value={EmployeeStatus.inactive}>Inactive</SelectItem>
-                    <SelectItem value={EmployeeStatus.terminated}>Terminated</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={form.jobTitle ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Badge ID</Label>
-                <Input value={editForm.badgeId ?? ''} onChange={e => setEditForm(p => ({ ...p, badgeId: e.target.value }))} />
+                <Input
+                  value={form.badgeId ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, badgeId: e.target.value }))}
+                />
               </div>
-              <div className="space-y-1 sm:col-span-2">
-                <Label>Direct Manager *</Label>
-                {isManagerRole ? (
-                  <Input value="Human Resources" disabled className="bg-muted" />
-                ) : (
-                  <Select value={editForm.directManagerId ?? ''} onValueChange={v => setEditForm(p => ({ ...p, directManagerId: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select direct manager" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {managers.map(mgr => (
-                        <SelectItem key={mgr.id} value={mgr.id}>{mgr.fullName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+              <div className="space-y-1">
+                <Label>Direct Manager</Label>
+                <Select
+                  value={form.directManagerId ?? '__none__'}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, directManagerId: v === '__none__' ? undefined : v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No Manager</SelectItem>
+                    {managers.map((m: Employee) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Employee ID</p>
-                <p className="font-medium">{employee.id}</p>
+                <p className="text-xs text-muted-foreground">Full Name</p>
+                <p className="text-sm font-medium">{employee.fullName}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Full Name</p>
-                <p className="font-medium">{employee.fullName}</p>
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-sm font-medium">{employee.email || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Email</p>
-                <p className="font-medium">{employee.email || '—'}</p>
+                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="text-sm font-medium">{employee.phone || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Phone</p>
-                <p className="font-medium">{employee.phone || '—'}</p>
+                <p className="text-xs text-muted-foreground">Department</p>
+                <p className="text-sm font-medium">{employee.department || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Department</p>
-                <p className="font-medium">{employee.department}</p>
+                <p className="text-xs text-muted-foreground">Job Title</p>
+                <p className="text-sm font-medium">{employee.jobTitle || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Job Title</p>
-                <p className="font-medium">{employee.jobTitle}</p>
+                <p className="text-xs text-muted-foreground">Badge ID</p>
+                <p className="text-sm font-medium">{employee.badgeId || '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Role</p>
-                <p className="font-medium">{getRoleLabel(employee.role)}</p>
+                <p className="text-xs text-muted-foreground">Direct Manager</p>
+                <p className="text-sm font-medium">{managerName}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs uppercase tracking-wide">Direct Manager</p>
-                <p className="font-medium">{getManagerName(employee.directManagerId)}</p>
+                <p className="text-xs text-muted-foreground">Role</p>
+                <p className="text-sm font-medium capitalize">{employee.role}</p>
               </div>
-              {employee.badgeId && (
-                <div className="sm:col-span-2">
-                  <p className="text-muted-foreground text-xs uppercase tracking-wide flex items-center gap-1">
-                    <CreditCard className="h-3 w-3" /> Badge ID
-                  </p>
-                  <p className="font-medium font-mono">{employee.badgeId}</p>
-                </div>
-              )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {isHRAdmin && (
-        <div className="flex justify-end gap-2">
+        <div className="flex gap-3">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={deactivateEmployee.isPending}>
-                {deactivateEmployee.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              <Button variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-50">
+                <UserX className="h-4 w-4 mr-2" />
                 Deactivate
               </Button>
             </AlertDialogTrigger>
@@ -344,8 +314,8 @@ export default function EmployeeDetailPage() {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={deleteEmployee.isPending}>
-                {deleteEmployee.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              <Button variant="destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
                 Delete Employee
               </Button>
             </AlertDialogTrigger>
@@ -353,7 +323,7 @@ export default function EmployeeDetailPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Employee?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {employee.fullName} and all associated data. This action cannot be undone.
+                  This will permanently delete {employee.fullName}'s record. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
