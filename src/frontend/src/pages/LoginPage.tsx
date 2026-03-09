@@ -63,7 +63,7 @@ function getRoleDashboard(role: Session["role"]): string {
 }
 
 export default function LoginPage() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorLoading } = useActor();
   const { setSession } = useAuth();
   const navigate = useNavigate();
 
@@ -170,7 +170,9 @@ export default function LoginPage() {
       return;
     }
     if (!actor) {
-      setBadgeError("System not ready. Please try again.");
+      setBadgeError(
+        "Cannot connect to server. Please refresh the page and try again.",
+      );
       return;
     }
     setBadgeLoading(true);
@@ -222,8 +224,14 @@ export default function LoginPage() {
       setError("Please enter your username and password.");
       return;
     }
+    if (actorLoading) {
+      setError("System is initializing, please wait a moment and try again.");
+      return;
+    }
     if (!actor) {
-      setError("System not ready. Please try again.");
+      setError(
+        "Cannot connect to server. Please refresh the page and try again.",
+      );
       return;
     }
     setIsLoading(true);
@@ -351,14 +359,14 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full gap-2"
-                disabled={isLoading}
+                disabled={isLoading || actorLoading}
               >
-                {isLoading ? (
+                {isLoading || actorLoading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 ) : (
                   <LogIn className="h-4 w-4" />
                 )}
-                Sign In
+                {actorLoading ? "Connecting..." : "Sign In"}
               </Button>
             </form>
 
