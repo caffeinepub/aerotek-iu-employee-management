@@ -185,8 +185,6 @@ export default function LoginPage() {
       }
       const profile = result.ok;
       const sessionRole = roleToSessionRole(profile.role);
-
-      // For badge login, try to get employee's full name as display name
       let displayName: string | undefined;
       if (profile.employeeId) {
         try {
@@ -196,7 +194,6 @@ export default function LoginPage() {
           // fallback to username
         }
       }
-
       const session: Session = {
         username: profile.username,
         displayName,
@@ -236,15 +233,15 @@ export default function LoginPage() {
     }
     setIsLoading(true);
     setError("");
+
     try {
       const profile = await actor.login(username.trim(), password);
       if (!profile) {
         setError("Invalid username or password.");
+        setIsLoading(false);
         return;
       }
       const sessionRole = roleToSessionRole(profile.role);
-
-      // Try to get display name: for employees use fullName, for others use username
       let displayName: string | undefined;
       if (profile.employeeId) {
         try {
@@ -254,7 +251,6 @@ export default function LoginPage() {
           // fallback to username
         }
       }
-
       const session: Session = {
         username: profile.username,
         displayName,
@@ -319,6 +315,7 @@ export default function LoginPage() {
                   placeholder="Enter your username"
                   autoComplete="username"
                   disabled={isLoading}
+                  data-ocid="login.username.input"
                 />
               </div>
               <div className="space-y-1">
@@ -333,6 +330,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     disabled={isLoading}
                     className="pr-10"
+                    data-ocid="login.password.input"
                   />
                   <button
                     type="button"
@@ -350,7 +348,10 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
+                <div
+                  className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg"
+                  data-ocid="login.error_state"
+                >
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </div>
@@ -360,13 +361,18 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full gap-2"
                 disabled={isLoading || actorLoading}
+                data-ocid="login.submit_button"
               >
                 {isLoading || actorLoading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 ) : (
                   <LogIn className="h-4 w-4" />
                 )}
-                {actorLoading ? "Connecting..." : "Sign In"}
+                {actorLoading
+                  ? "Connecting..."
+                  : isLoading
+                    ? "Signing In..."
+                    : "Sign In"}
               </Button>
             </form>
 
