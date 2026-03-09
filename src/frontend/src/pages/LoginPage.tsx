@@ -238,7 +238,6 @@ export default function LoginPage() {
       const profile = await actor.login(username.trim(), password);
       if (!profile) {
         setError("Invalid username or password.");
-        setIsLoading(false);
         return;
       }
       const sessionRole = roleToSessionRole(profile.role);
@@ -349,7 +348,7 @@ export default function LoginPage() {
 
               {error && (
                 <div
-                  className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg"
+                  className="flex items-center gap-2 text-sm p-3 rounded-lg text-destructive bg-destructive/10"
                   data-ocid="login.error_state"
                 >
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -371,7 +370,7 @@ export default function LoginPage() {
                 {actorLoading
                   ? "Connecting..."
                   : isLoading
-                    ? "Signing In..."
+                    ? "Signing in..."
                     : "Sign In"}
               </Button>
             </form>
@@ -498,7 +497,7 @@ export default function LoginPage() {
               </div>
 
               {badgeError && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
+                <div className="flex items-center gap-2 text-sm p-2 rounded text-destructive bg-destructive/10">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {badgeError}
                 </div>
