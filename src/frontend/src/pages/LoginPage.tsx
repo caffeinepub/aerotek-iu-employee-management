@@ -56,19 +56,8 @@ function getRoleDashboard(role: Session["role"]): string {
   }
 }
 
-function isCanisterStopped(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return (
-    msg.includes("IC0508") ||
-    msg.includes("canister is stopped") ||
-    (msg.includes("Canister") && msg.includes("stopped"))
-  );
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export default function LoginPage() {
-  const { actor, isFetching: actorLoading } = useActor();
+  const { actor } = useActor();
   const { setSession } = useAuth();
   const navigate = useNavigate();
 
@@ -91,16 +80,9 @@ export default function LoginPage() {
   const detectorRef = useRef<unknown>(null);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Silently wake the canister as soon as actor is available
-  useEffect(() => {
-    if (!actor) return;
-    actor.getCallerUserProfile().catch(() => {});
-  }, [actor]);
-
   useEffect(() => {
     try {
-      const supported = "BarcodeDetector" in window;
-      setCameraSupported(supported);
+      setCameraSupported("BarcodeDetector" in window);
     } catch {
       setCameraSupported(false);
     }
@@ -191,18 +173,8 @@ export default function LoginPage() {
       }
       const profile = result.ok;
       const sessionRole = roleToSessionRole(profile.role);
-      let displayName: string | undefined;
-      if (profile.employeeId) {
-        try {
-          const emp = await actor.getEmployee(profile.employeeId);
-          displayName = emp.fullName || undefined;
-        } catch {
-          /* fallback */
-        }
-      }
       const session: Session = {
         username: profile.username,
-        displayName,
         role: sessionRole,
         employeeId: profile.employeeId ?? undefined,
       };
@@ -221,35 +193,10 @@ export default function LoginPage() {
     await handleBadgeLogin(badgeInput);
   };
 
-  // Attempt login with up to 4 silent retries if the canister is waking up
-  const attemptLogin = async (user: string, pass: string) => {
-    if (!actor) throw new Error("Cannot connect to server.");
-    const maxAttempts = 4;
-    let lastErr: unknown;
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        return await actor.login(user, pass);
-      } catch (err) {
-        lastErr = err;
-        if (isCanisterStopped(err) && i < maxAttempts - 1) {
-          // Wait before retrying — canister is waking up
-          await sleep(3000);
-          continue;
-        }
-        throw err;
-      }
-    }
-    throw lastErr;
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("Please enter your username and password.");
-      return;
-    }
-    if (actorLoading) {
-      setError("System is initializing, please wait a moment and try again.");
       return;
     }
     if (!actor) {
@@ -261,37 +208,23 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
     try {
-      const profile = await attemptLogin(username.trim(), password);
+      // Single direct call — no retries, no delays
+      const profile = await actor.login(username.trim(), password);
       if (!profile) {
         setError("Invalid username or password.");
         return;
       }
       const sessionRole = roleToSessionRole(profile.role);
-      let displayName: string | undefined;
-      if (profile.employeeId) {
-        try {
-          const emp = await actor.getEmployee(profile.employeeId);
-          displayName = emp.fullName || undefined;
-        } catch {
-          /* fallback */
-        }
-      }
       const session: Session = {
         username: profile.username,
-        displayName,
         role: sessionRole,
         employeeId: profile.employeeId ?? undefined,
       };
       setSession(session);
       navigate({ to: getRoleDashboard(sessionRole) });
     } catch (err) {
-      // Only show a generic error — never expose IC0508 or canister details
-      if (isCanisterStopped(err)) {
-        setError("Unable to sign in. Please try again.");
-      } else {
-        const msg = err instanceof Error ? err.message : "";
-        setError(msg || "Invalid username or password.");
-      }
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg || "Invalid username or password.");
     } finally {
       setIsLoading(false);
     }
@@ -305,9 +238,8 @@ export default function LoginPage() {
           "linear-gradient(135deg, #0a1628 0%, #0d2244 40%, #0f2d5e 70%, #1a3a6e 100%)",
       }}
     >
-      {/* Left decorative panel - hidden on mobile */}
+      {/* Left decorative panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Subtle geometric shapes */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className="absolute rounded-full opacity-10"
@@ -327,17 +259,6 @@ export default function LoginPage() {
               background: "radial-gradient(circle, #60a5fa, transparent)",
               bottom: 0,
               right: -50,
-            }}
-          />
-          <div
-            className="absolute opacity-5"
-            style={{
-              width: 2,
-              height: "100%",
-              background:
-                "linear-gradient(to bottom, transparent, #60a5fa, transparent)",
-              right: 0,
-              top: 0,
             }}
           />
         </div>
@@ -415,7 +336,6 @@ export default function LoginPage() {
             <p className="text-blue-300 text-sm mt-1">HR Management System</p>
           </div>
 
-          {/* Welcome */}
           <div className="hidden lg:block">
             <h2 className="text-2xl font-bold text-white">Welcome back</h2>
             <p className="text-blue-300 text-sm mt-1">
@@ -423,7 +343,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
               <Label
@@ -439,6 +358,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
                 autoComplete="username"
+                autoFocus
                 disabled={isLoading}
                 data-ocid="login.username.input"
                 className="h-11 text-white placeholder:text-blue-400/60"
@@ -507,30 +427,24 @@ export default function LoginPage() {
               type="submit"
               className="w-full h-11 font-semibold gap-2 text-white transition-all"
               style={{
-                background:
-                  isLoading || actorLoading
-                    ? "rgba(59,130,246,0.5)"
-                    : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                background: isLoading
+                  ? "rgba(59,130,246,0.5)"
+                  : "linear-gradient(135deg, #2563eb, #1d4ed8)",
                 border: "1px solid rgba(96,165,250,0.3)",
                 borderRadius: 8,
               }}
-              disabled={isLoading || actorLoading}
+              disabled={isLoading}
               data-ocid="login.submit_button"
             >
-              {isLoading || actorLoading ? (
+              {isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
               ) : (
                 <LogIn className="h-4 w-4" />
               )}
-              {actorLoading
-                ? "Connecting..."
-                : isLoading
-                  ? "Signing in..."
-                  : "Sign In"}
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
-          {/* Badge login */}
           <div className="text-center">
             <div
               className="inline-block w-full h-px mb-5"
