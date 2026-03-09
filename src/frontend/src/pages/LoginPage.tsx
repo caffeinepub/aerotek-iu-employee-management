@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,6 +16,7 @@ import {
   Eye,
   EyeOff,
   LogIn,
+  Shield,
   X,
 } from "lucide-react";
 import type React from "react";
@@ -62,6 +56,17 @@ function getRoleDashboard(role: Session["role"]): string {
   }
 }
 
+function isCanisterStopped(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("IC0508") ||
+    msg.includes("canister is stopped") ||
+    (msg.includes("Canister") && msg.includes("stopped"))
+  );
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export default function LoginPage() {
   const { actor, isFetching: actorLoading } = useActor();
   const { setSession } = useAuth();
@@ -86,6 +91,12 @@ export default function LoginPage() {
   const detectorRef = useRef<unknown>(null);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Silently wake the canister as soon as actor is available
+  useEffect(() => {
+    if (!actor) return;
+    actor.getCallerUserProfile().catch(() => {});
+  }, [actor]);
+
   useEffect(() => {
     try {
       const supported = "BarcodeDetector" in window;
@@ -101,9 +112,7 @@ export default function LoginPage() {
       scanIntervalRef.current = null;
     }
     if (streamRef.current) {
-      for (const t of streamRef.current.getTracks()) {
-        t.stop();
-      }
+      for (const t of streamRef.current.getTracks()) t.stop();
       streamRef.current = null;
     }
     setCameraActive(false);
@@ -121,7 +130,6 @@ export default function LoginPage() {
         await videoRef.current.play();
       }
       setCameraActive(true);
-
       try {
         // @ts-ignore
         const detector = new window.BarcodeDetector({
@@ -139,7 +147,7 @@ export default function LoginPage() {
               await handleBadgeLogin(code);
             }
           } catch {
-            // ignore scan errors
+            /* ignore */
           }
         }, 300);
       } catch {
@@ -170,9 +178,7 @@ export default function LoginPage() {
       return;
     }
     if (!actor) {
-      setBadgeError(
-        "Cannot connect to server. Please refresh the page and try again.",
-      );
+      setBadgeError("Cannot connect to server. Please refresh and try again.");
       return;
     }
     setBadgeLoading(true);
@@ -191,7 +197,7 @@ export default function LoginPage() {
           const emp = await actor.getEmployee(profile.employeeId);
           displayName = emp.fullName || undefined;
         } catch {
-          // fallback to username
+          /* fallback */
         }
       }
       const session: Session = {
@@ -215,6 +221,27 @@ export default function LoginPage() {
     await handleBadgeLogin(badgeInput);
   };
 
+  // Attempt login with up to 4 silent retries if the canister is waking up
+  const attemptLogin = async (user: string, pass: string) => {
+    if (!actor) throw new Error("Cannot connect to server.");
+    const maxAttempts = 4;
+    let lastErr: unknown;
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        return await actor.login(user, pass);
+      } catch (err) {
+        lastErr = err;
+        if (isCanisterStopped(err) && i < maxAttempts - 1) {
+          // Wait before retrying — canister is waking up
+          await sleep(3000);
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
@@ -233,9 +260,8 @@ export default function LoginPage() {
     }
     setIsLoading(true);
     setError("");
-
     try {
-      const profile = await actor.login(username.trim(), password);
+      const profile = await attemptLogin(username.trim(), password);
       if (!profile) {
         setError("Invalid username or password.");
         return;
@@ -247,7 +273,7 @@ export default function LoginPage() {
           const emp = await actor.getEmployee(profile.employeeId);
           displayName = emp.fullName || undefined;
         } catch {
-          // fallback to username
+          /* fallback */
         }
       }
       const session: Session = {
@@ -259,147 +285,283 @@ export default function LoginPage() {
       setSession(session);
       navigate({ to: getRoleDashboard(sessionRole) });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Login failed. Please try again.",
-      );
+      // Only show a generic error — never expose IC0508 or canister details
+      if (isCanisterStopped(err)) {
+        setError("Unable to sign in. Please try again.");
+      } else {
+        const msg = err instanceof Error ? err.message : "";
+        setError(msg || "Invalid username or password.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0">
-        <img
-          src="/assets/generated/login-bg.dim_1920x1080.png"
-          alt=""
-          className="w-full h-full object-cover opacity-20"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-background/80" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-md px-4">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <img
-            src="/assets/generated/aerotek-logo.dim_256x256.png"
-            alt="Aerotek"
-            className="h-16 w-16 mb-3"
+    <div
+      className="min-h-screen flex items-stretch"
+      style={{
+        background:
+          "linear-gradient(135deg, #0a1628 0%, #0d2244 40%, #0f2d5e 70%, #1a3a6e 100%)",
+      }}
+    >
+      {/* Left decorative panel - hidden on mobile */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Subtle geometric shapes */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div
+            className="absolute rounded-full opacity-10"
+            style={{
+              width: 500,
+              height: 500,
+              background: "radial-gradient(circle, #3b82f6, transparent)",
+              top: -100,
+              left: -100,
+            }}
           />
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Aerotek
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            HR Management System
-          </p>
+          <div
+            className="absolute rounded-full opacity-5"
+            style={{
+              width: 400,
+              height: 400,
+              background: "radial-gradient(circle, #60a5fa, transparent)",
+              bottom: 0,
+              right: -50,
+            }}
+          />
+          <div
+            className="absolute opacity-5"
+            style={{
+              width: 2,
+              height: "100%",
+              background:
+                "linear-gradient(to bottom, transparent, #60a5fa, transparent)",
+              right: 0,
+              top: 0,
+            }}
+          />
         </div>
 
-        <Card className="shadow-xl border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Sign In</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                  autoComplete="username"
-                  disabled={isLoading}
-                  data-ocid="login.username.input"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                    className="pr-10"
-                    data-ocid="login.password.input"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div
-                  className="flex items-center gap-2 text-sm p-3 rounded-lg text-destructive bg-destructive/10"
-                  data-ocid="login.error_state"
-                >
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full gap-2"
-                disabled={isLoading || actorLoading}
-                data-ocid="login.submit_button"
-              >
-                {isLoading || actorLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <LogIn className="h-4 w-4" />
-                )}
-                {actorLoading
-                  ? "Connecting..."
-                  : isLoading
-                    ? "Signing in..."
-                    : "Sign In"}
-              </Button>
-            </form>
-
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={handleBadgeModalOpen}
-                className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto"
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                Login with Staff ID Badge
-              </button>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div
+              className="flex items-center justify-center w-10 h-10 rounded-lg"
+              style={{
+                background: "rgba(59,130,246,0.2)",
+                border: "1px solid rgba(96,165,250,0.3)",
+              }}
+            >
+              <Shield className="h-5 w-5 text-blue-400" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-blue-200 font-semibold text-lg tracking-wide">
+              Aerotek (IU)
+            </span>
+          </div>
+        </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          © {new Date().getFullYear()} Aerotek HR. Built with{" "}
-          <span className="text-red-500">♥</span> using{" "}
-          <a
-            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname || "aerotek-hr")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            caffeine.ai
-          </a>
-        </p>
+        <div className="relative z-10 space-y-6">
+          <div>
+            <h2 className="text-4xl font-bold text-white leading-tight">
+              Workforce Management
+            </h2>
+            <p className="text-blue-200 mt-3 text-lg leading-relaxed">
+              A secure, role-based HR platform for scheduling, timesheets, and
+              team management.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {[
+              "Role-based access control",
+              "Advanced shift scheduling",
+              "Timesheet & PTO management",
+              "Real-time team notifications",
+            ].map((f) => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span className="text-blue-100 text-sm">{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <p className="text-blue-400 text-xs">
+            © {new Date().getFullYear()} Aerotek HR. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* Right login panel */}
+      <div
+        className="flex flex-1 items-center justify-center p-6 lg:p-12"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center">
+            <div
+              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+              style={{
+                background: "rgba(59,130,246,0.2)",
+                border: "1px solid rgba(96,165,250,0.3)",
+              }}
+            >
+              <Shield className="h-7 w-7 text-blue-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Aerotek (IU)</h1>
+            <p className="text-blue-300 text-sm mt-1">HR Management System</p>
+          </div>
+
+          {/* Welcome */}
+          <div className="hidden lg:block">
+            <h2 className="text-2xl font-bold text-white">Welcome back</h2>
+            <p className="text-blue-300 text-sm mt-1">
+              Sign in to access your dashboard
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="username"
+                className="text-blue-100 text-sm font-medium"
+              >
+                Username
+              </Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                autoComplete="username"
+                disabled={isLoading}
+                data-ocid="login.username.input"
+                className="h-11 text-white placeholder:text-blue-400/60"
+                style={{
+                  background: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(96,165,250,0.25)",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="password"
+                className="text-blue-100 text-sm font-medium"
+              >
+                Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                  data-ocid="login.password.input"
+                  className="h-11 pr-10 text-white placeholder:text-blue-400/60"
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(96,165,250,0.25)",
+                    borderRadius: 8,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-200 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div
+                className="flex items-start gap-2.5 text-sm p-3 rounded-lg"
+                style={{
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                }}
+                data-ocid="login.error_state"
+              >
+                <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-400 mt-0.5" />
+                <span className="text-red-300">{error}</span>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-11 font-semibold gap-2 text-white transition-all"
+              style={{
+                background:
+                  isLoading || actorLoading
+                    ? "rgba(59,130,246,0.5)"
+                    : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                border: "1px solid rgba(96,165,250,0.3)",
+                borderRadius: 8,
+              }}
+              disabled={isLoading || actorLoading}
+              data-ocid="login.submit_button"
+            >
+              {isLoading || actorLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              ) : (
+                <LogIn className="h-4 w-4" />
+              )}
+              {actorLoading
+                ? "Connecting..."
+                : isLoading
+                  ? "Signing in..."
+                  : "Sign In"}
+            </Button>
+          </form>
+
+          {/* Badge login */}
+          <div className="text-center">
+            <div
+              className="inline-block w-full h-px mb-5"
+              style={{ background: "rgba(96,165,250,0.15)" }}
+            />
+            <button
+              type="button"
+              onClick={handleBadgeModalOpen}
+              className="flex items-center justify-center gap-2 w-full h-10 rounded-lg text-sm font-medium text-blue-300 hover:text-white transition-colors"
+              style={{
+                border: "1px solid rgba(96,165,250,0.2)",
+                background: "rgba(255,255,255,0.04)",
+              }}
+            >
+              <CreditCard className="h-4 w-4" />
+              Login with Staff ID Badge
+            </button>
+          </div>
+
+          <p className="text-center text-xs text-blue-500">
+            © {new Date().getFullYear()} Aerotek HR &mdash; Powered by{" "}
+            <a
+              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname || "aerotek-hr")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-300 underline"
+            >
+              caffeine.ai
+            </a>
+          </p>
+        </div>
       </div>
 
       {/* Badge Scanner Modal */}
@@ -419,7 +581,6 @@ export default function LoginPage() {
               Scan your badge or enter your badge ID manually.
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             {cameraSupported && (
               <div>
@@ -452,38 +613,28 @@ export default function LoginPage() {
                       className="w-full gap-1"
                       onClick={stopCamera}
                     >
-                      <X className="h-3.5 w-3.5" />
-                      Stop Camera
+                      <X className="h-3.5 w-3.5" /> Stop Camera
                     </Button>
                   </div>
                 )}
               </div>
             )}
-
             {cameraError && (
               <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 p-2 rounded">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 {cameraError}
               </div>
             )}
-
-            <div className="relative">
-              {cameraSupported && (
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center">
-                  <div className="flex-1 border-t border-border" />
-                  <span className="px-2 text-xs text-muted-foreground bg-background">
-                    or enter manually
-                  </span>
-                  <div className="flex-1 border-t border-border" />
-                </div>
-              )}
-            </div>
-
-            <form
-              onSubmit={handleManualBadgeSubmit}
-              className="space-y-3"
-              style={{ marginTop: cameraSupported ? "1.5rem" : 0 }}
-            >
+            {cameraSupported && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-muted-foreground">
+                  or enter manually
+                </span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+            )}
+            <form onSubmit={handleManualBadgeSubmit} className="space-y-3">
               <div>
                 <Label htmlFor="badge-id">Badge ID</Label>
                 <Input
@@ -495,14 +646,12 @@ export default function LoginPage() {
                   className="mt-1"
                 />
               </div>
-
               {badgeError && (
                 <div className="flex items-center gap-2 text-sm p-2 rounded text-destructive bg-destructive/10">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {badgeError}
                 </div>
               )}
-
               <Button
                 type="submit"
                 className="w-full"
