@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Role } from "../backend";
 import { useAuth } from "../contexts/AuthContext";
 import type { Session } from "../contexts/AuthContext";
@@ -61,11 +61,6 @@ export default function LoginPage() {
   const { setSession } = useAuth();
   const navigate = useNavigate();
 
-  // Canister readiness state
-  const [canisterReady, setCanisterReady] = useState(false);
-  const warmupAttempts = useRef(0);
-  const warmupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -82,33 +77,7 @@ export default function LoginPage() {
   const [cameraError, setCameraError] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<unknown>(null);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Silently warm up the canister by pinging it with a cheap call.
-  // Keeps retrying with backoff until the canister responds — user only sees
-  // a loading spinner, never an error message.
-  const warmCanister = useCallback(async () => {
-    if (!actor) return;
-    try {
-      // validateSession is a lightweight read — perfect for waking the canister
-      await actor.validateSession("__ping__");
-      setCanisterReady(true);
-    } catch {
-      // Canister still starting — retry after backoff (max ~30s total)
-      warmupAttempts.current += 1;
-      const delay = Math.min(2000 * warmupAttempts.current, 8000);
-      warmupTimer.current = setTimeout(warmCanister, delay);
-    }
-  }, [actor]);
-
-  useEffect(() => {
-    if (!actor) return;
-    warmCanister();
-    return () => {
-      if (warmupTimer.current) clearTimeout(warmupTimer.current);
-    };
-  }, [actor, warmCanister]);
 
   useEffect(() => {
     try {
@@ -147,7 +116,6 @@ export default function LoginPage() {
         const detector = new window.BarcodeDetector({
           formats: ["qr_code", "code_128", "code_39"],
         });
-        detectorRef.current = detector;
         scanIntervalRef.current = setInterval(async () => {
           if (!videoRef.current) return;
           try {
@@ -211,10 +179,8 @@ export default function LoginPage() {
       setSession(session);
       setBadgeModalOpen(false);
       navigate({ to: getRoleDashboard(sessionRole) });
-    } catch (_err) {
-      setBadgeError(
-        _err instanceof Error ? _err.message : "Badge login failed",
-      );
+    } catch {
+      setBadgeError("Badge login failed. Please try again.");
     } finally {
       setBadgeLoading(false);
     }
@@ -254,44 +220,12 @@ export default function LoginPage() {
       };
       setSession(session);
       navigate({ to: getRoleDashboard(sessionRole) });
-    } catch (_err) {
-      // On any canister error after we've already warmed it, just show a
-      // generic message — never expose raw IC error codes to staff.
-      setError("Unable to sign in. Please try again.");
+    } catch {
+      setError("Unable to sign in. Please refresh the page and try again.");
       setIsLoading(false);
     }
   };
 
-  // ─── Loading screen while canister wakes up ─────────────────────────────────
-  if (!canisterReady) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center"
-        style={{
-          background:
-            "linear-gradient(135deg, #0a1628 0%, #0d2244 40%, #0f2d5e 70%, #1a3a6e 100%)",
-        }}
-      >
-        <div
-          className="flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
-          style={{
-            background: "rgba(59,130,246,0.2)",
-            border: "1px solid rgba(96,165,250,0.3)",
-          }}
-        >
-          <Shield className="h-8 w-8 text-blue-400" />
-        </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Aerotek (IU)</h1>
-        <p className="text-blue-300 text-sm mb-8">HR Management System</p>
-        <div className="flex items-center gap-3 text-blue-300 text-sm">
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent" />
-          <span>Connecting...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Main login form ─────────────────────────────────────────────────────────
   return (
     <div
       className="min-h-screen flex items-stretch"
@@ -417,7 +351,10 @@ export default function LoginPage() {
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError("");
+                }}
                 placeholder="Enter your username"
                 autoComplete="username"
                 autoFocus
@@ -444,7 +381,10 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError("");
+                  }}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   disabled={isLoading}
