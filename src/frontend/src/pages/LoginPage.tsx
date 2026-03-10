@@ -62,16 +62,18 @@ function isCanisterStoppedError(err: unknown): boolean {
     msg.includes("IC0508") ||
     msg.includes("canister stopped") ||
     msg.includes("Canister stopped") ||
-    msg.includes("is stopped")
+    msg.includes("is stopped") ||
+    msg.includes("rejected") ||
+    msg.includes("Reject code: 5")
   );
 }
 
-async function sleep(ms: number) {
+function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export default function LoginPage() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorLoading } = useActor();
   const { setSession } = useAuth();
   const navigate = useNavigate();
 
@@ -213,23 +215,28 @@ export default function LoginPage() {
       setError("Please enter your username and password.");
       return;
     }
-    if (!actor) {
-      setError(
-        "Cannot connect to server. Please refresh the page and try again.",
-      );
-      return;
-    }
+
     setIsLoading(true);
     setError("");
 
-    // Attempt login with silent retries for canister wake-up (IC0508)
-    const MAX_RETRIES = 5;
-    const RETRY_DELAY_MS = 2500;
+    const currentActor = actor;
+
+    if (!currentActor) {
+      setError(
+        "Cannot connect to server. Please refresh the page and try again.",
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    // Silent retry loop — handles canister wake-up (IC0508) transparently
+    const MAX_RETRIES = 6;
+    const RETRY_DELAY_MS = 3000;
     let lastErr: unknown = null;
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const profile = await actor.login(username.trim(), password);
+        const profile = await currentActor.login(username.trim(), password);
         if (!profile) {
           setError("Invalid username or password.");
           setIsLoading(false);
@@ -247,25 +254,31 @@ export default function LoginPage() {
       } catch (err) {
         lastErr = err;
         if (isCanisterStoppedError(err) && attempt < MAX_RETRIES - 1) {
-          // Canister is waking up — wait silently and retry
+          // Canister is waking up — wait silently and retry (no error shown to user)
           await sleep(RETRY_DELAY_MS);
           continue;
         }
-        // Not a canister-stopped error, or out of retries
         break;
       }
     }
 
     // All attempts failed
-    const msg = lastErr instanceof Error ? lastErr.message : "";
-    // If it was a canister issue, show a friendly message rather than the raw error
     if (isCanisterStoppedError(lastErr)) {
-      setError("Unable to connect. Please try again in a moment.");
+      setError("The system is starting up. Please try again in a few seconds.");
     } else {
+      const msg = lastErr instanceof Error ? lastErr.message : "";
       setError(msg || "Invalid username or password.");
     }
     setIsLoading(false);
   };
+
+  // While actor is initializing, show connecting state
+  const buttonDisabled = isLoading || actorLoading;
+  const buttonLabel = actorLoading
+    ? "Connecting..."
+    : isLoading
+      ? "Signing in..."
+      : "Sign In";
 
   return (
     <div
@@ -396,7 +409,7 @@ export default function LoginPage() {
                 placeholder="Enter your username"
                 autoComplete="username"
                 autoFocus
-                disabled={isLoading}
+                disabled={buttonDisabled}
                 data-ocid="login.username.input"
                 className="h-11 text-white placeholder:text-blue-400/60"
                 style={{
@@ -422,7 +435,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  disabled={isLoading}
+                  disabled={buttonDisabled}
                   data-ocid="login.password.input"
                   className="h-11 pr-10 text-white placeholder:text-blue-400/60"
                   style={{
@@ -464,21 +477,21 @@ export default function LoginPage() {
               type="submit"
               className="w-full h-11 font-semibold gap-2 text-white transition-all"
               style={{
-                background: isLoading
+                background: buttonDisabled
                   ? "rgba(59,130,246,0.5)"
                   : "linear-gradient(135deg, #2563eb, #1d4ed8)",
                 border: "1px solid rgba(96,165,250,0.3)",
                 borderRadius: 8,
               }}
-              disabled={isLoading}
+              disabled={buttonDisabled}
               data-ocid="login.submit_button"
             >
-              {isLoading ? (
+              {buttonDisabled ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
               ) : (
                 <LogIn className="h-4 w-4" />
               )}
-              {isLoading ? "Signing in..." : "Sign In"}
+              {buttonLabel}
             </Button>
           </form>
 
