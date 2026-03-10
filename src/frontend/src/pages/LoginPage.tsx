@@ -56,6 +56,20 @@ function getRoleDashboard(role: Session["role"]): string {
   }
 }
 
+function isCanisterStoppedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("IC0508") ||
+    msg.includes("canister stopped") ||
+    msg.includes("Canister stopped") ||
+    msg.includes("is stopped")
+  );
+}
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function LoginPage() {
   const { actor } = useActor();
   const { setSession } = useAuth();
@@ -207,27 +221,50 @@ export default function LoginPage() {
     }
     setIsLoading(true);
     setError("");
-    try {
-      // Single direct call — no retries, no delays
-      const profile = await actor.login(username.trim(), password);
-      if (!profile) {
-        setError("Invalid username or password.");
+
+    // Attempt login with silent retries for canister wake-up (IC0508)
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 2500;
+    let lastErr: unknown = null;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const profile = await actor.login(username.trim(), password);
+        if (!profile) {
+          setError("Invalid username or password.");
+          setIsLoading(false);
+          return;
+        }
+        const sessionRole = roleToSessionRole(profile.role);
+        const session: Session = {
+          username: profile.username,
+          role: sessionRole,
+          employeeId: profile.employeeId ?? undefined,
+        };
+        setSession(session);
+        navigate({ to: getRoleDashboard(sessionRole) });
         return;
+      } catch (err) {
+        lastErr = err;
+        if (isCanisterStoppedError(err) && attempt < MAX_RETRIES - 1) {
+          // Canister is waking up — wait silently and retry
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        // Not a canister-stopped error, or out of retries
+        break;
       }
-      const sessionRole = roleToSessionRole(profile.role);
-      const session: Session = {
-        username: profile.username,
-        role: sessionRole,
-        employeeId: profile.employeeId ?? undefined,
-      };
-      setSession(session);
-      navigate({ to: getRoleDashboard(sessionRole) });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(msg || "Invalid username or password.");
-    } finally {
-      setIsLoading(false);
     }
+
+    // All attempts failed
+    const msg = lastErr instanceof Error ? lastErr.message : "";
+    // If it was a canister issue, show a friendly message rather than the raw error
+    if (isCanisterStoppedError(lastErr)) {
+      setError("Unable to connect. Please try again in a moment.");
+    } else {
+      setError(msg || "Invalid username or password.");
+    }
+    setIsLoading(false);
   };
 
   return (
