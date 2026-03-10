@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Role } from "../backend";
 import { useAuth } from "../contexts/AuthContext";
 import type { Session } from "../contexts/AuthContext";
@@ -56,26 +56,15 @@ function getRoleDashboard(role: Session["role"]): string {
   }
 }
 
-function isCanisterStoppedError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return (
-    msg.includes("IC0508") ||
-    msg.includes("canister stopped") ||
-    msg.includes("Canister stopped") ||
-    msg.includes("is stopped") ||
-    msg.includes("rejected") ||
-    msg.includes("Reject code: 5")
-  );
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export default function LoginPage() {
-  const { actor, isFetching: actorLoading } = useActor();
+  const { actor } = useActor();
   const { setSession } = useAuth();
   const navigate = useNavigate();
+
+  // Canister readiness state
+  const [canisterReady, setCanisterReady] = useState(false);
+  const warmupAttempts = useRef(0);
+  const warmupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -95,6 +84,31 @@ export default function LoginPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const detectorRef = useRef<unknown>(null);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Silently warm up the canister by pinging it with a cheap call.
+  // Keeps retrying with backoff until the canister responds — user only sees
+  // a loading spinner, never an error message.
+  const warmCanister = useCallback(async () => {
+    if (!actor) return;
+    try {
+      // validateSession is a lightweight read — perfect for waking the canister
+      await actor.validateSession("__ping__");
+      setCanisterReady(true);
+    } catch {
+      // Canister still starting — retry after backoff (max ~30s total)
+      warmupAttempts.current += 1;
+      const delay = Math.min(2000 * warmupAttempts.current, 8000);
+      warmupTimer.current = setTimeout(warmCanister, delay);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (!actor) return;
+    warmCanister();
+    return () => {
+      if (warmupTimer.current) clearTimeout(warmupTimer.current);
+    };
+  }, [actor, warmCanister]);
 
   useEffect(() => {
     try {
@@ -197,8 +211,10 @@ export default function LoginPage() {
       setSession(session);
       setBadgeModalOpen(false);
       navigate({ to: getRoleDashboard(sessionRole) });
-    } catch (err) {
-      setBadgeError(err instanceof Error ? err.message : "Badge login failed");
+    } catch (_err) {
+      setBadgeError(
+        _err instanceof Error ? _err.message : "Badge login failed",
+      );
     } finally {
       setBadgeLoading(false);
     }
@@ -215,71 +231,67 @@ export default function LoginPage() {
       setError("Please enter your username and password.");
       return;
     }
+    if (!actor) {
+      setError("Cannot connect. Please refresh the page and try again.");
+      return;
+    }
 
     setIsLoading(true);
     setError("");
 
-    const currentActor = actor;
-
-    if (!currentActor) {
-      setError(
-        "Cannot connect to server. Please refresh the page and try again.",
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    // Silent retry loop — handles canister wake-up (IC0508) transparently
-    const MAX_RETRIES = 6;
-    const RETRY_DELAY_MS = 3000;
-    let lastErr: unknown = null;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const profile = await currentActor.login(username.trim(), password);
-        if (!profile) {
-          setError("Invalid username or password.");
-          setIsLoading(false);
-          return;
-        }
-        const sessionRole = roleToSessionRole(profile.role);
-        const session: Session = {
-          username: profile.username,
-          role: sessionRole,
-          employeeId: profile.employeeId ?? undefined,
-        };
-        setSession(session);
-        navigate({ to: getRoleDashboard(sessionRole) });
+    try {
+      const profile = await actor.login(username.trim(), password);
+      if (!profile) {
+        setError("Invalid username or password.");
+        setIsLoading(false);
         return;
-      } catch (err) {
-        lastErr = err;
-        if (isCanisterStoppedError(err) && attempt < MAX_RETRIES - 1) {
-          // Canister is waking up — wait silently and retry (no error shown to user)
-          await sleep(RETRY_DELAY_MS);
-          continue;
-        }
-        break;
       }
+      const sessionRole = roleToSessionRole(profile.role);
+      const session: Session = {
+        username: profile.username,
+        role: sessionRole,
+        employeeId: profile.employeeId ?? undefined,
+      };
+      setSession(session);
+      navigate({ to: getRoleDashboard(sessionRole) });
+    } catch (_err) {
+      // On any canister error after we've already warmed it, just show a
+      // generic message — never expose raw IC error codes to staff.
+      setError("Unable to sign in. Please try again.");
+      setIsLoading(false);
     }
-
-    // All attempts failed
-    if (isCanisterStoppedError(lastErr)) {
-      setError("The system is starting up. Please try again in a few seconds.");
-    } else {
-      const msg = lastErr instanceof Error ? lastErr.message : "";
-      setError(msg || "Invalid username or password.");
-    }
-    setIsLoading(false);
   };
 
-  // While actor is initializing, show connecting state
-  const buttonDisabled = isLoading || actorLoading;
-  const buttonLabel = actorLoading
-    ? "Connecting..."
-    : isLoading
-      ? "Signing in..."
-      : "Sign In";
+  // ─── Loading screen while canister wakes up ─────────────────────────────────
+  if (!canisterReady) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center"
+        style={{
+          background:
+            "linear-gradient(135deg, #0a1628 0%, #0d2244 40%, #0f2d5e 70%, #1a3a6e 100%)",
+        }}
+      >
+        <div
+          className="flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
+          style={{
+            background: "rgba(59,130,246,0.2)",
+            border: "1px solid rgba(96,165,250,0.3)",
+          }}
+        >
+          <Shield className="h-8 w-8 text-blue-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-2">Aerotek (IU)</h1>
+        <p className="text-blue-300 text-sm mb-8">HR Management System</p>
+        <div className="flex items-center gap-3 text-blue-300 text-sm">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent" />
+          <span>Connecting...</span>
+        </div>
+      </div>
+    );
+  }
 
+  // ─── Main login form ─────────────────────────────────────────────────────────
   return (
     <div
       className="min-h-screen flex items-stretch"
@@ -357,7 +369,7 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           <p className="text-blue-400 text-xs">
-            © {new Date().getFullYear()} Aerotek HR. All rights reserved.
+            &copy; {new Date().getFullYear()} Aerotek HR. All rights reserved.
           </p>
         </div>
       </div>
@@ -409,7 +421,7 @@ export default function LoginPage() {
                 placeholder="Enter your username"
                 autoComplete="username"
                 autoFocus
-                disabled={buttonDisabled}
+                disabled={isLoading}
                 data-ocid="login.username.input"
                 className="h-11 text-white placeholder:text-blue-400/60"
                 style={{
@@ -435,7 +447,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  disabled={buttonDisabled}
+                  disabled={isLoading}
                   data-ocid="login.password.input"
                   className="h-11 pr-10 text-white placeholder:text-blue-400/60"
                   style={{
@@ -477,21 +489,21 @@ export default function LoginPage() {
               type="submit"
               className="w-full h-11 font-semibold gap-2 text-white transition-all"
               style={{
-                background: buttonDisabled
+                background: isLoading
                   ? "rgba(59,130,246,0.5)"
                   : "linear-gradient(135deg, #2563eb, #1d4ed8)",
                 border: "1px solid rgba(96,165,250,0.3)",
                 borderRadius: 8,
               }}
-              disabled={buttonDisabled}
+              disabled={isLoading}
               data-ocid="login.submit_button"
             >
-              {buttonDisabled ? (
+              {isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
               ) : (
                 <LogIn className="h-4 w-4" />
               )}
-              {buttonLabel}
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
@@ -515,7 +527,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-blue-500">
-            © {new Date().getFullYear()} Aerotek HR &mdash; Powered by{" "}
+            &copy; {new Date().getFullYear()} Aerotek HR &mdash; Powered by{" "}
             <a
               href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname || "aerotek-hr")}`}
               target="_blank"
